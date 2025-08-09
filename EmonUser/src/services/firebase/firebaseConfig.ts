@@ -5,13 +5,13 @@ import { getFirestore } from 'firebase/firestore';
 
 // Your Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBzZotbO7QzJETNeV8Sl_N-IEi-v-hVpTo",
-  authDomain: "emoniot-fb5ce.firebaseapp.com",
-  databaseURL: "https://emoniot-fb5ce-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "emoniot-fb5ce",
-  storageBucket: "emoniot-fb5ce.appspot.com",
-  messagingSenderId: "434793832350",
-  appId: "1:434793832350:android:c0b9d1c4eee126eb0e808f"
+  apiKey: "EMON_API_KEY",
+  authDomain: "EMON_AUTH_DOMAIN",
+  databaseURL: "EMON_DATABASE_URL",
+  projectId: "EMON_PROJECTID",
+  storageBucket: "EMON_STORAGE_BUCKET",
+  messagingSenderId: "EMON_MESSENGER_ID",
+  appId: "EMON_APP_ID"
 };
 
 // Initialize Firebase
