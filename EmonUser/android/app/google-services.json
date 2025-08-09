@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "434793832350",
+    "firebase_url": "https://emoniot-fb5ce-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "emoniot-fb5ce",
+    "storage_bucket": "emoniot-fb5ce.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:434793832350:android:c0b9d1c4eee126eb0e808f",
+        "android_client_info": {
+          "package_name": "com.example.emonapp_v1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBzZotbO7QzJETNeV8Sl_N-IEi-v-hVpTo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
