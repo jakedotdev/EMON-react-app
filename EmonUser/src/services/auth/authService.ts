@@ -15,6 +15,7 @@ export interface UserProfile {
   uid: string;
   email: string;
   displayName: string;
+  preferredTimezone?: string;
   phoneNumber?: string;
   role: 'user';
   profileImage?: string;
@@ -101,7 +102,7 @@ export class AuthService {
   }
 
   // Sign up with email and password
-  async signUp(email: string, password: string, displayName: string): Promise<UserProfile> {
+  async signUp(email: string, password: string, displayName: string, preferredTimezone?: string): Promise<UserProfile> {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -114,6 +115,7 @@ export class AuthService {
         uid: user.uid,
         email: user.email!,
         displayName,
+        preferredTimezone,
         role: 'user',
         preferences: {
           theme: 'light',

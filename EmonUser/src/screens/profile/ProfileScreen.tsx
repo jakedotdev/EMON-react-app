@@ -9,11 +9,15 @@ import {
   Alert,
   Switch,
   Image,
+  ActionSheetIOS,
+  Platform,
 } from 'react-native';
+import { launchImageLibrary, launchCamera, ImagePickerResponse, MediaType } from 'react-native-image-picker';
 import { authService } from '../../services/auth/authService';
 import { adminService } from '../../services/admin/adminService';
 import { userService, UserProfile as UserProfileType } from '../../services/user/userService';
 import { deviceService } from '../../services/devices/deviceService';
+import { storageService } from '../../services/storage/storageService';
 import { getAuth, updateProfile } from 'firebase/auth';
 
 type UserProfile = UserProfileType;
@@ -40,6 +44,7 @@ const ProfileScreen: React.FC = () => {
   const [editedProfile, setEditedProfile] = useState<UserProfile>(profile);
   const [userDevices, setUserDevices] = useState<any[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -124,6 +129,155 @@ const ProfileScreen: React.FC = () => {
   const handleCancelEdit = () => {
     setEditedProfile(profile);
     setIsEditing(false);
+  };
+
+  const showImagePicker = () => {
+    const options = [
+      'Take Photo',
+      'Choose from Library',
+      'Remove Photo',
+      'Cancel'
+    ];
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          cancelButtonIndex: 3,
+          destructiveButtonIndex: 2,
+        },
+        (buttonIndex) => {
+          handleImagePickerResponse(buttonIndex);
+        }
+      );
+    } else {
+      // For Android, we'll use Alert
+      Alert.alert(
+        'Profile Photo',
+        'Choose an option',
+        [
+          { text: 'Take Photo', onPress: () => handleImagePickerResponse(0) },
+          { text: 'Choose from Library', onPress: () => handleImagePickerResponse(1) },
+          { text: 'Remove Photo', onPress: () => handleImagePickerResponse(2), style: 'destructive' },
+          { text: 'Cancel', onPress: () => handleImagePickerResponse(3), style: 'cancel' },
+        ]
+      );
+    }
+  };
+
+  const handleImagePickerResponse = (buttonIndex: number) => {
+    switch (buttonIndex) {
+      case 0: // Take Photo
+        launchCamera(
+          {
+            mediaType: 'photo' as MediaType,
+            quality: 0.8,
+            maxWidth: 800,
+            maxHeight: 800,
+          },
+          handleImageResponse
+        );
+        break;
+      case 1: // Choose from Library
+        launchImageLibrary(
+          {
+            mediaType: 'photo' as MediaType,
+            quality: 0.8,
+            maxWidth: 800,
+            maxHeight: 800,
+          },
+          handleImageResponse
+        );
+        break;
+      case 2: // Remove Photo
+        handleRemovePhoto();
+        break;
+      case 3: // Cancel
+        console.log('Photo selection cancelled');
+        break;
+      default:
+        // Handle any other cases (like when user dismisses without selecting)
+        console.log('Photo selection dismissed');
+        break;
+    }
+  };
+
+  const handleImageResponse = (response: ImagePickerResponse) => {
+    if (response.didCancel || response.errorMessage) {
+      return;
+    }
+
+    if (response.assets && response.assets[0]) {
+      const asset = response.assets[0];
+      if (asset.uri) {
+        uploadProfileImage(asset.uri);
+      }
+    }
+  };
+
+  const uploadProfileImage = async (imageUri: string) => {
+    if (!currentUser) return;
+
+    setUploadingImage(true);
+    try {
+      // Upload image to Firebase Storage
+      const downloadURL = await storageService.uploadProfileImage(currentUser.uid, imageUri);
+
+      // Update profile with new image URL
+      const updatedProfile = { ...editedProfile, profileImage: downloadURL };
+      setEditedProfile(updatedProfile);
+
+      // If not in editing mode, save immediately
+      if (!isEditing) {
+        await userService.updateUserProfile(currentUser.uid, updatedProfile);
+        setProfile(updatedProfile);
+        Alert.alert('Success', 'Profile photo updated successfully');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      Alert.alert('Error', 'Failed to upload profile photo');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!currentUser) return;
+
+    Alert.alert(
+      'Remove Photo',
+      'Are you sure you want to remove your profile photo?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            setUploadingImage(true);
+            try {
+              // Delete image from Firebase Storage
+              await storageService.deleteProfileImage(currentUser.uid);
+
+              // Update profile to remove image URL
+              const updatedProfile = { ...editedProfile, profileImage: '' };
+              setEditedProfile(updatedProfile);
+
+              // If not in editing mode, save immediately
+              if (!isEditing) {
+                await userService.updateUserProfile(currentUser.uid, updatedProfile);
+                setProfile(updatedProfile);
+                Alert.alert('Success', 'Profile photo removed successfully');
+              }
+            } catch (error) {
+              console.error('Error removing image:', error);
+              Alert.alert('Error', 'Failed to remove profile photo');
+            } finally {
+              setUploadingImage(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleSignOut = () => {
@@ -214,36 +368,34 @@ const ProfileScreen: React.FC = () => {
 
       {/* Profile Picture Section */}
       <View style={styles.profilePictureSection}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.profilePictureContainer}
-          onPress={() => {
-            if (isEditing) {
-              // TODO: Add image picker functionality
-              Alert.alert('Profile Image', 'Image picker functionality will be added here');
-            }
-          }}
+          onPress={showImagePicker}
+          disabled={uploadingImage}
         >
-          {profile.profileImage ? (
-            <Image 
-              source={{ uri: profile.profileImage }} 
+          {(editedProfile.profileImage || profile.profileImage) ? (
+            <Image
+              source={{ uri: editedProfile.profileImage || profile.profileImage }}
               style={styles.profileImage}
             />
           ) : (
             <View style={styles.profilePicture}>
               <Text style={styles.profileInitials}>
-                {profile.fullName.split(' ').map(n => n[0]).join('')}
+                {(editedProfile.fullName || profile.fullName).split(' ').map(n => n[0]).join('')}
               </Text>
             </View>
           )}
-          {isEditing && (
-            <View style={styles.editImageOverlay}>
-              <Text style={styles.editImageText}>Edit</Text>
-            </View>
-          )}
+          <View style={styles.editImageOverlay}>
+            {uploadingImage ? (
+              <Text style={styles.editImageText}>Uploading...</Text>
+            ) : (
+              <Text style={styles.cameraIcon}>📷</Text>
+            )}
+          </View>
         </TouchableOpacity>
         <Text style={styles.profileName}>{profile.fullName}</Text>
         <Text style={styles.profileEmail}>{profile.email}</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.editProfileButton}
           onPress={() => setIsEditing(!isEditing)}
         >
@@ -379,7 +531,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#D3E6BF',
+    borderBottomColor: '#E0E0E0',
   },
   title: {
     fontSize: 24,
@@ -396,6 +548,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
+
+
   profilePictureSection: {
     alignItems: 'center',
     padding: 30,
@@ -429,17 +583,26 @@ const styles = StyleSheet.create({
   },
   editImageOverlay: {
     position: 'absolute',
-    bottom: 15,
-    right: 0,
-    backgroundColor: '#5B934E',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    bottom: 5,
+    right: 5,
+    backgroundColor: 'rgba(91, 147, 78, 0.9)',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   editImageText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  cameraIcon: {
+    fontSize: 16,
+    color: '#FFFFFF',
   },
   editProfileButton: {
     backgroundColor: '#5B934E',

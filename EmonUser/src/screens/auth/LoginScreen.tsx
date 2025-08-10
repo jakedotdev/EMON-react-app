@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { authService } from '../../services/auth/authService';
+import { loginManager } from './managers/LoginManager';
 
 interface LoginScreenProps {
   navigation: any;
@@ -21,16 +21,19 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const passwordRef = useRef<TextInput>(null);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+    const error = loginManager.validate({ email, password });
+    if (error) {
+      Alert.alert('Error', error);
       return;
     }
 
     setLoading(true);
     try {
-      await authService.signIn(email, password);
+      await loginManager.signIn(email.trim(), password);
       // Navigation will be handled by the auth state listener
     } catch (error: any) {
       Alert.alert('Login Failed', error.message);
@@ -40,8 +43,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   };
 
   const handleForgotPassword = () => {
-    if (!email) {
-      Alert.alert('Error', 'Please enter your email address first');
+    const error = loginManager.validateEmail(email);
+    if (error) {
+      Alert.alert('Error', error);
       return;
     }
 
@@ -54,7 +58,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           text: 'Send',
           onPress: async () => {
             try {
-              await authService.resetPassword(email);
+              await loginManager.resetPassword(email);
               Alert.alert('Success', 'Password reset email sent!');
             } catch (error: any) {
               Alert.alert('Error', error.message);
@@ -70,7 +74,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Text style={styles.title}>EMON</Text>
           <Text style={styles.subtitle}>Energy Monitoring System</Text>
@@ -87,19 +91,34 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
             />
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <View style={styles.passwordRow}>
+              <TextInput
+                ref={passwordRef}
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Enter your password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+              />
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                style={styles.toggleButton}
+                onPress={() => setShowPassword((s) => !s)}
+              >
+                <Text style={styles.toggleButtonText}>{showPassword ? 'Hide' : 'Show'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity
@@ -113,9 +132,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             style={[styles.loginButton, loading && styles.loginButtonDisabled]}
             onPress={handleLogin}
             disabled={loading}
+            activeOpacity={0.85}
           >
             {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <View style={styles.loadingRow}>
+                <ActivityIndicator color="#FFFFFF" />
+                <Text style={[styles.loginButtonText, { marginLeft: 10 }]}>Signing in…</Text>
+              </View>
             ) : (
               <Text style={styles.loginButtonText}>Login</Text>
             )}
@@ -150,7 +173,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: '#5B934E',
     marginBottom: 8,
   },
   subtitle: {
@@ -182,22 +205,42 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     backgroundColor: '#FFFFFF',
+  },
+  passwordRow: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  passwordInput: {
+    paddingRight: 80,
+  },
+  toggleButton: {
+    position: 'absolute',
+    right: 8,
+    top: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#F0FDF4',
+  },
+  toggleButtonText: {
+    color: '#166534',
+    fontWeight: '700',
   },
   forgotPassword: {
     alignSelf: 'flex-end',
     marginBottom: 20,
   },
   forgotPasswordText: {
-    color: '#007AFF',
+    color: '#5B934E',
     fontSize: 14,
   },
   loginButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#5B934E',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
@@ -211,6 +254,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   signupContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -221,10 +268,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   signupLink: {
-    color: '#007AFF',
+    color: '#5B934E',
     fontSize: 14,
     fontWeight: '600',
   },
-});
+})
 
 export default LoginScreen;

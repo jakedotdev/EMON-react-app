@@ -127,18 +127,18 @@ const ApplianceRegistrationModal: React.FC<ApplianceRegistrationModalProps> = ({
 
     try {
       setLoading(true);
-      console.log('Loading devices for user:', currentUser.uid);
-      const devices = await deviceService.getUserDevices(currentUser.uid);
-      console.log('Loaded devices:', devices);
+      console.log('Loading available devices for user:', currentUser.uid);
+      const devices = await deviceService.getUserAvailableDevices(currentUser.uid);
+      console.log('Loaded available devices:', devices);
       setUserDevices(devices);
-      
-      // No mock devices - only show real activated devices
+
+      // Only show devices that don't have appliances registered yet
       if (devices.length === 0) {
-        console.log('No activated devices found for user');
+        console.log('No available devices found for user - all devices may already have appliances registered');
       }
     } catch (error) {
-      console.error('Error loading devices:', error);
-      Alert.alert('Error', 'Failed to load devices');
+      console.error('Error loading available devices:', error);
+      Alert.alert('Error', 'Failed to load available devices');
     } finally {
       setLoading(false);
     }
@@ -236,9 +236,9 @@ const ApplianceRegistrationModal: React.FC<ApplianceRegistrationModalProps> = ({
           <Text style={styles.label}>Select Device (Serial Number)</Text>
           {userDevices.length === 0 ? (
             <View style={styles.noDevicesContainer}>
-              <Text style={styles.noDevicesText}>No activated devices found</Text>
+              <Text style={styles.noDevicesText}>No available devices found</Text>
               <Text style={styles.noDevicesSubtext}>
-                               Please contact your administrator to activate your devices.
+                All your devices already have appliances registered, or you need to contact your administrator to activate more devices.
               </Text>
             </View>
           ) : (

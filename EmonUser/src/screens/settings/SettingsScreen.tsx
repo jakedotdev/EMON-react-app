@@ -250,13 +250,14 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#D3E6BF',
+    borderBottomColor: '#E0E0E0',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#5B934E',
   },
+
   section: {
     backgroundColor: '#FFFFFF',
     margin: 20,
