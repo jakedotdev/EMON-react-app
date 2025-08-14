@@ -84,6 +84,8 @@ export class AnalyticsDataManager {
       if (uid) {
         // Fire and forget; errors logged inside service if thrown up the stack
         void historicalDataStoreService.capturePeriodics(uid, sensorData);
+        // Also try to backfill any missing daily docs up to yesterday
+        void historicalDataStoreService.backfillMissingDaily(uid);
       }
       this.generateChartData('Realtime', sensorData);
       // Also generate summary card data for initial load
@@ -94,7 +96,7 @@ export class AnalyticsDataManager {
     return unsubscribe;
   }
 
-  async generateSummaryCardData(period: TimePeriod) {
+  async generateSummaryCardData(period: TimePeriod, selectedDate?: Date) {
     try {
       let summaryData: SummaryCardData;
       
@@ -103,13 +105,13 @@ export class AnalyticsDataManager {
           summaryData = await energyCalculationService.getRealtimeSummary();
           break;
         case 'Daily':
-          summaryData = await energyCalculationService.getDailySummary();
+          summaryData = await energyCalculationService.getDailySummary(selectedDate);
           break;
         case 'Weekly':
-          summaryData = await energyCalculationService.getWeeklySummary();
+          summaryData = await energyCalculationService.getWeeklySummary(selectedDate);
           break;
         case 'Monthly':
-          summaryData = await energyCalculationService.getMonthlySummary();
+          summaryData = await energyCalculationService.getMonthlySummary(selectedDate);
           break;
         default:
           summaryData = await energyCalculationService.getRealtimeSummary();
@@ -118,20 +120,11 @@ export class AnalyticsDataManager {
       this.setSummaryCardData(summaryData);
     } catch (error) {
       console.error('Error generating summary card data:', error);
-      // Set empty summary data as fallback
-      this.setSummaryCardData({
-        totalValue: 0,
-        totalLabel: 'Total',
-        avgValue: 0,
-        avgLabel: 'Average',
-        peakValue: 0,
-        peakLabel: 'Peak',
-        peakDetail: ''
-      });
+      // Avoid buffering with placeholder zeros; keep previous summary values
     }
   }
 
-  async generateChartData(period: TimePeriod, sensors: { [key: string]: SensorReadingModel }) {
+  async generateChartData(period: TimePeriod, sensors: { [key: string]: SensorReadingModel }, selectedDate?: Date) {
     try {
       let labels: string[] = [];
       let data: number[] = [];
@@ -143,88 +136,188 @@ export class AnalyticsDataManager {
 
       switch (period) {
         case 'Realtime':
-          // Last 10 minutes of real data
-          startTime = new Date(now.getTime() - 10 * 60 * 1000);
-          const realtimeData = await historicalDataService.getRealtimeData(10);
-          
-          // Group by 2-minute intervals for 6 data points
-          const intervalMs = 2 * 60 * 1000;
-          for (let i = 5; i >= 0; i--) {
-            const intervalStart = new Date(now.getTime() - i * intervalMs);
-            const intervalEnd = new Date(intervalStart.getTime() + intervalMs);
-            
-            const intervalData = realtimeData.filter(point => 
-              point.timestamp >= intervalStart.getTime() && point.timestamp < intervalEnd.getTime()
-            );
-            
-            const avgEnergy = intervalData.length > 0 
-              ? intervalData.reduce((sum, point) => sum + (point.energy || 0), 0) / intervalData.length
-              : 0;
-            
-            labels.push(`${intervalStart.getMinutes()}:${intervalStart.getSeconds().toString().padStart(2, '0')}`);
-            data.push(avgEnergy); // Using energy in kWh
+          // Current hour split into 6 buckets: every 10 minutes (hh:10, ..., nextHour 00)
+          // Future bucket (not yet reached) should display 0
+          {
+            // Fetch last 60 minutes of realtime points
+            const realtimeData = await historicalDataService.getRealtimeData(60);
+
+            // Resolve user's preferred timezone
+            const uid = getAuth().currentUser?.uid;
+            const tz = uid ? await energyCalculationService.getUserTimezone(uid) : 'UTC';
+
+            // Compute the epoch for the start of the current hour in user's timezone
+            const nowActual = new Date();
+            const parts = new Intl.DateTimeFormat('en-CA', {
+              timeZone: tz,
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit', hour12: false,
+            }).formatToParts(nowActual);
+            const getNum = (t: string) => Number(parts.find(p => p.type === t)?.value);
+            const y = getNum('year');
+            const mo = getNum('month');
+            const d = getNum('day');
+            const hr = getNum('hour');
+            const min = getNum('minute');
+            // Local-as-UTC instant representing the user's current wall time
+            const localAsUTC = Date.UTC(y, mo - 1, d, hr, min, 0, 0);
+            // Offset between that and actual now gives tz offset at this instant
+            const tzOffsetMs = localAsUTC - nowActual.getTime();
+            // Start of hour in user's local time, converted to actual epoch
+            const hourStartEpoch = Date.UTC(y, mo - 1, d, hr, 0, 0, 0) - tzOffsetMs;
+
+            // Formatter for labels in user's timezone, 12-hour with AM/PM (e.g., 9:10 PM)
+            const fmt = new Intl.DateTimeFormat('en-US', {
+              timeZone: tz,
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+            });
+
+            for (let i = 1; i <= 6; i++) {
+              const minutesMark = i * 10; // 10,20,30,40,50,60
+              const bucketEndMs = hourStartEpoch + minutesMark * 60 * 1000;
+              const bucketStartMs = bucketEndMs - 10 * 60 * 1000;
+              const bucketEnd = new Date(bucketEndMs);
+              const bucketStart = new Date(bucketStartMs);
+
+              // Label end-of-bucket time in user's timezone; for 60, show next hour 00
+              const labelDate = minutesMark === 60
+                ? new Date(hourStartEpoch + 60 * 60 * 1000)
+                : bucketEnd;
+              labels.push(fmt.format(labelDate));
+
+              // If bucketEnd is in the future relative to timezone-adjusted now, push 0
+              if (bucketEndMs > nowActual.getTime()) {
+                data.push(0);
+                continue;
+              }
+
+              const intervalData = realtimeData.filter(
+                (p) => p.timestamp >= bucketStartMs && p.timestamp < bucketEndMs
+              );
+
+              const avgEnergy = intervalData.length > 0
+                ? intervalData.reduce((sum, p) => sum + (p.energy || 0), 0) / intervalData.length
+                : 0;
+
+              data.push(avgEnergy);
+            }
           }
           break;
 
         case 'Daily':
-          // Last 24 hours of real data
-          startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-          aggregatedData = await historicalDataService.getAggregatedData(startTime, endTime, 60); // 1-hour intervals
-          
-          for (let i = 23; i >= 0; i--) {
-            const hour = (24 + (now.getHours() - i)) % 24;
+          // Selected date's 24 hours; if none selected, default to yesterday
+          const target = selectedDate ? new Date(selectedDate) : (() => { const d = new Date(now); d.setDate(now.getDate() - 1); return d; })();
+          startTime = new Date(target);
+          startTime.setHours(0, 0, 0, 0);
+          endTime = new Date(target);
+          endTime.setHours(23, 59, 59, 999);
+          // Read from Firestore hourly path: users/{uid}/historical/root/hourly/{YYYY-MM-DD}/hours
+          {
+            const uid = getAuth().currentUser?.uid;
+            if (uid) {
+              aggregatedData = await historicalDataService.getDailyAggregatedFromFirestore(startTime, uid);
+            } else {
+              aggregatedData = await historicalDataService.getAggregatedData(startTime, endTime, 60);
+            }
+          }
+
+          for (let hour = 0; hour < 24; hour++) {
             labels.push(`${hour}:00`);
-            
-            const hourData = aggregatedData.find(d => {
-              const dataHour = new Date(d.timestamp).getHours();
-              return dataHour === hour;
-            });
-            
-            data.push(hourData ? hourData.totalEnergy : 0); // Using totalEnergy in kWh
+            const hourData = aggregatedData.find(d => new Date(d.timestamp).getHours() === hour);
+            data.push(hourData ? hourData.totalEnergy : 0);
           }
           break;
 
         case 'Weekly':
-          // Last 7 days of real data
-          startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          aggregatedData = await historicalDataService.getAggregatedData(startTime, endTime, 24 * 60); // Daily intervals
-          
-          const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-          labels = days;
-          
-          for (let i = 6; i >= 0; i--) {
-            const dayStart = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-            dayStart.setHours(0, 0, 0, 0);
-            
-            const dayData = aggregatedData.find(d => {
-              const dataDay = new Date(d.timestamp);
-              dataDay.setHours(0, 0, 0, 0);
-              return dataDay.getTime() === dayStart.getTime();
-            });
-            
-            data.push(dayData ? dayData.totalEnergy : 0); // Using totalEnergy in kWh
+          // Week containing selectedDate; else last 7 days from now
+          {
+            const uid = getAuth().currentUser?.uid;
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            labels = days;
+            if (uid) {
+              if (selectedDate) {
+                // Compute Monday..Sunday of the week containing selectedDate (ISO week)
+                const dateUTC = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate()));
+                const dayOfWeek = (dateUTC.getUTCDay() || 7); // 1..7 where 1=Sun? JS: 0 Sun, so convert
+                const monday = new Date(dateUTC);
+                monday.setUTCDate(dateUTC.getUTCDate() - ((dayOfWeek === 7 ? 0 : dayOfWeek) - 1)); // make Monday
+                for (let i = 0; i < 7; i++) {
+                  const day = new Date(monday);
+                  day.setUTCDate(monday.getUTCDate() + i);
+                  const local = new Date(day);
+                  local.setHours(0, 0, 0, 0);
+                  const { total } = await historicalDataService.getDailyConsumption(local);
+                  data.push(total);
+                }
+              } else {
+                for (let i = 6; i >= 0; i--) {
+                  const day = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+                  day.setHours(0, 0, 0, 0);
+                  const { total } = await historicalDataService.getDailyConsumption(day);
+                  data.push(total);
+                }
+              }
+            } else {
+              // Fallback to previous local aggregation logic
+              startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+              aggregatedData = await historicalDataService.getAggregatedData(startTime, endTime, 24 * 60);
+              for (let i = 6; i >= 0; i--) {
+                const dayStart = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+                dayStart.setHours(0, 0, 0, 0);
+                const dayData = aggregatedData.find(d => {
+                  const dataDay = new Date(d.timestamp);
+                  dataDay.setHours(0, 0, 0, 0);
+                  return dataDay.getTime() === dayStart.getTime();
+                });
+                data.push(dayData ? dayData.totalEnergy : 0);
+              }
+            }
           }
           break;
 
         case 'Monthly':
-          // Last 30 days of real data
-          startTime = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          aggregatedData = await historicalDataService.getAggregatedData(startTime, endTime, 24 * 60); // Daily intervals
-          
-          for (let i = 29; i >= 0; i--) {
-            const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-            labels.push(`${date.getDate()}/${date.getMonth() + 1}`);
-            
-            const dayStart = new Date(date);
-            dayStart.setHours(0, 0, 0, 0);
-            
-            const dayData = aggregatedData.find(d => {
-              const dataDay = new Date(d.timestamp);
-              dataDay.setHours(0, 0, 0, 0);
-              return dataDay.getTime() === dayStart.getTime();
-            });
-            
-            data.push(dayData ? dayData.totalEnergy : 0); // Using totalEnergy in kWh
+          // Selected month grouped by ISO weeks: labels Wxx and values = weekly total (sum of daily totals)
+          {
+            const targetMonth = selectedDate ? new Date(selectedDate) : new Date(now);
+            const year = targetMonth.getFullYear();
+            const month = targetMonth.getMonth(); // 0-11
+
+            // Compute date range covering the month
+            const monthStart = new Date(year, month, 1, 0, 0, 0, 0);
+            const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+            // Helper to get ISO week number
+            const getISOWeek = (d: Date) => {
+              const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+              const dayNum = (date.getUTCDay() + 6) % 7; // 0=Mon
+              date.setUTCDate(date.getUTCDate() - dayNum + 3);
+              const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+              const diff = date.getTime() - firstThursday.getTime();
+              return 1 + Math.round(diff / (7 * 24 * 3600 * 1000));
+            };
+
+            // Map week -> total
+            const weekTotals = new Map<number, number>();
+
+            // Iterate each day in month and accumulate daily totals per ISO week
+            for (
+              let dt = new Date(monthStart);
+              dt.getTime() <= monthEnd.getTime();
+              dt.setDate(dt.getDate() + 1)
+            ) {
+              const day = new Date(dt);
+              day.setHours(0, 0, 0, 0);
+              const { total } = await historicalDataService.getDailyConsumption(day);
+              const week = getISOWeek(day);
+              weekTotals.set(week, (weekTotals.get(week) || 0) + total);
+            }
+
+            // Sort week numbers and build labels/data e.g., W22, W23...
+            const sortedWeeks = Array.from(weekTotals.keys()).sort((a, b) => a - b);
+            labels = sortedWeeks.map((w) => `W${w}`);
+            data = sortedWeeks.map((w) => weekTotals.get(w) || 0);
           }
           break;
       }
@@ -236,7 +329,6 @@ export class AnalyticsDataManager {
 
       const chartData: ChartData = { labels, data, total, average, peak, low };
       this.setChartData(chartData);
-      this.setSelectedPeriod(period);
     } catch (error) {
       console.error('Error generating chart data:', error);
       // Fallback to current sensor data if historical data fails
@@ -295,7 +387,6 @@ export class AnalyticsDataManager {
     
     const chartData: ChartData = { labels, data, total, average, peak, low };
     this.setChartData(chartData);
-    this.setSelectedPeriod(period);
   }
 
   async generateHistoryData(selectedDate: Date, sensors: { [key: string]: SensorReadingModel }): Promise<HistoryData[]> {
@@ -378,6 +469,8 @@ export class AnalyticsDataManager {
       const uid = getAuth().currentUser?.uid;
       if (uid) {
         void historicalDataStoreService.capturePeriodics(uid, sensorData);
+        // Attempt daily backfill on manual refresh as well
+        void historicalDataStoreService.backfillMissingDaily(uid);
       }
       
       // Regenerate chart data with fresh sensor data

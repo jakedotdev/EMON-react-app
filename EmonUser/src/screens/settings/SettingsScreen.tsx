@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,10 @@ import {
   Switch,
   Alert,
 } from 'react-native';
+import { getAuth } from 'firebase/auth';
+import { authService } from '../../services/auth/authService';
+import TimezonePicker from '../auth/components/TimezonePicker';
+import { TimeFormatter } from '../dashboard/utils/TimeFormatter';
 
 const SettingsScreen: React.FC = () => {
   const [settings, setSettings] = useState({
@@ -34,6 +38,57 @@ const SettingsScreen: React.FC = () => {
       sessionTimeout: '30 minutes',
     },
   });
+
+  const [preferredTimezone, setPreferredTimezone] = useState<string>('UTC');
+  const [savingTimezone, setSavingTimezone] = useState<boolean>(false);
+
+  useEffect(() => {
+    const loadTimezone = async () => {
+      try {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        if (!user) return;
+        const profile = await authService.getUserProfile(user.uid);
+        const tz = profile?.preferredTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+        setPreferredTimezone(tz);
+        TimeFormatter.setTimeZone(tz);
+      } catch (e) {
+        try {
+          const fallback = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+          setPreferredTimezone(fallback);
+          TimeFormatter.setTimeZone(fallback);
+        } catch {
+          setPreferredTimezone('UTC');
+          TimeFormatter.setTimeZone('UTC');
+        }
+      }
+    };
+    loadTimezone();
+  }, []);
+
+  const handleTimezoneChange = async (tz: string) => {
+    // Validate tz
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: tz }).format(new Date());
+    } catch {
+      Alert.alert('Invalid timezone', 'Please select a valid IANA timezone.');
+      return;
+    }
+    setPreferredTimezone(tz);
+    TimeFormatter.setTimeZone(tz);
+    try {
+      setSavingTimezone(true);
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (user) {
+        await authService.updateUserProfile(user.uid, { preferredTimezone: tz });
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to save timezone. It will still apply locally.');
+    } finally {
+      setSavingTimezone(false);
+    }
+  };
 
   const handleToggleSetting = (category: string, setting: string, value: boolean) => {
     setSettings(prev => ({
@@ -151,6 +206,17 @@ const SettingsScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Settings</Text>
+      </View>
+
+      {/* Timezone */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Time</Text>
+        <TimezonePicker value={preferredTimezone} onChange={handleTimezoneChange} />
+        {savingTimezone ? (
+          <Text style={{ color: '#6B7280', marginTop: 6 }}>Saving timezone…</Text>
+        ) : (
+          <Text style={{ color: '#6B7280', marginTop: 6 }}>Used for accurate time displays and analytics.</Text>
+        )}
       </View>
 
       {/* Notifications */}

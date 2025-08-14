@@ -29,6 +29,14 @@ const ApplianceCard: React.FC<Props> = ({
   isExpanded,
   onToggleExpand,
 }) => {
+  // Helper function to format runtime from plain sensor data object
+  const formatRuntime = (sensorData: any): string => {
+    if (!sensorData) return '0h 0m 0s';
+    const hours = sensorData.runtimehr || 0;
+    const minutes = sensorData.runtimemin || 0;
+    const seconds = sensorData.runtimesec || 0;
+    return `${hours}h ${minutes}m ${seconds}s`;
+  };
   return (
     <View style={[styles.applianceCard, isHighlighted && styles.highlightedCard]}>
       <View style={styles.applianceHeader}>
@@ -88,7 +96,7 @@ const ApplianceCard: React.FC<Props> = ({
           )}
           <View style={styles.runtimeRow}>
             <Text style={styles.runtimeLabel}>Actual Runtime:</Text>
-            <Text style={styles.runtimeValue}>{sensorDataForDevice?.getFormattedRuntime?.() || '0h 0m 0s'}</Text>
+            <Text style={styles.runtimeValue}>{formatRuntime(sensorDataForDevice)}</Text>
             <Switch
               value={status.applianceState}
               onValueChange={onToggleAppliance}

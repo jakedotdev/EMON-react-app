@@ -3,6 +3,8 @@ import { getAuth } from 'firebase/auth';
 import { sensorService } from '../../../services/sensors/sensorService';
 import { deviceService } from '../../../services/devices/deviceService';
 import { SensorReadingModel } from '../../../models/SensorReading';
+import { authService } from '../../../services/auth/authService';
+import { TimeFormatter } from '../utils/TimeFormatter';
 
 export interface DashboardData {
   sensors: { [key: string]: SensorReadingModel };
@@ -43,6 +45,19 @@ export class DashboardDataManager {
     const currentUser = auth.currentUser;
     this.setCurrentUser(currentUser);
 
+    // Apply preferred timezone from user profile for app-wide formatting
+    try {
+      if (currentUser?.uid) {
+        const profile = await authService.getUserProfile(currentUser.uid);
+        TimeFormatter.setTimeZone(profile?.preferredTimezone);
+      } else {
+        TimeFormatter.setTimeZone(undefined);
+      }
+    } catch (e) {
+      // Fallback to device timezone if profile fetch fails
+      TimeFormatter.setTimeZone(undefined);
+    }
+
     const sensorUnsubscribe = await this.loadSensorData();
     await this.loadUserData();
 
@@ -77,6 +92,14 @@ export class DashboardDataManager {
       }
 
       console.log('Loading user data for:', currentUser.uid);
+
+      // Refresh timezone in case it changed
+      try {
+        const profile = await authService.getUserProfile(currentUser.uid);
+        TimeFormatter.setTimeZone(profile?.preferredTimezone);
+      } catch (_) {
+        // Ignore and keep existing/time device fallback
+      }
 
       // Load user's appliances and devices
       const [userAppliances, userDevices] = await Promise.all([

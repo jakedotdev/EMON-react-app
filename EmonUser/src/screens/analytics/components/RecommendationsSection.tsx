@@ -21,10 +21,25 @@ const RecommendationsSection: React.FC<RecommendationsSectionProps> = ({
     sensors
   );
 
+  // Helper function to safely convert any value to string for rendering
+  const safeStringify = (value: any): string => {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number') return value.toString();
+    if (typeof value === 'boolean') return value.toString();
+    // For objects, arrays, or other types, return empty string
+    return '';
+  };
+
+  // Ensure recommendations is always an array of strings
+  const safeRecommendations = Array.isArray(recommendations) 
+    ? recommendations.filter(rec => typeof rec === 'string' || rec != null).map(rec => safeStringify(rec))
+    : [];
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Recommendations</Text>
-      {recommendations.map((recommendation, index) => (
+      {safeRecommendations.map((recommendation, index) => (
         <View key={index} style={styles.recommendationItem}>
           <Text style={styles.bullet}>•</Text>
           <Text style={styles.recommendationText}>{recommendation}</Text>

@@ -1,5 +1,7 @@
 import { ref, get, query, orderByKey, limitToLast } from 'firebase/database';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { database } from '../firebase/firebaseConfig';
+import { getAuth } from 'firebase/auth';
 import { SensorReadingModel } from '../../models/SensorReading';
 
 export interface HistoricalDataPoint {
@@ -24,6 +26,7 @@ export interface AggregatedData {
 }
 
 export class HistoricalDataService {
+  private db = getFirestore();
   
   /**
    * Get historical sensor readings for a specific time range
@@ -121,13 +124,59 @@ export class HistoricalDataService {
   }
 
   /**
-   * Get real-time data for the last N minutes
+   * Get daily aggregated data from Firestore hourly docs under
+   * users/{uid}/historical/root/hourly/{YYYY-MM-DD}/hours/{HH}
+   * Values prioritize deltaKWh; if missing, compute from totalEnergyAtEnd.
    */
-  async getRealtimeData(minutes: number = 10): Promise<HistoricalDataPoint[]> {
-    const endTime = new Date();
-    const startTime = new Date(endTime.getTime() - minutes * 60 * 1000);
-    
-    return this.getHistoricalData(startTime, endTime);
+  async getDailyAggregatedFromFirestore(date: Date, uid: string): Promise<AggregatedData[]> {
+    const dateKey = this.formatDateKeyUTC(date);
+    const hourlyPathRoot = `users/${uid}/historical/root/hourly/${dateKey}/hours`;
+
+    const results: AggregatedData[] = [];
+    // Try to compute baseline from previous day 23:00 if needed
+    let prevTotal: number | undefined;
+    for (let h = 0; h < 24; h++) {
+      const hourKey = this.pad2(h);
+      const hourRef = doc(this.db, `${hourlyPathRoot}/${hourKey}`);
+      const snap = await getDoc(hourRef);
+      let kwh = 0;
+      let endTotal: number | undefined;
+      if (snap.exists()) {
+        const d: any = snap.data();
+        if (typeof d?.deltaKWh === 'number') {
+          kwh = Math.max(0, Number(d.deltaKWh));
+        } else if (typeof d?.totalEnergyAtEnd === 'number') {
+          endTotal = Number(d.totalEnergyAtEnd);
+          if (prevTotal !== undefined) {
+            kwh = Math.max(0, endTotal - prevTotal);
+          } else {
+            // for 00:00 baseline, try previous day 23:00
+            const prevDateKey = this.shiftDateKey(dateKey, -1);
+            const prevRef = doc(this.db, `users/${uid}/historical/root/hourly/${prevDateKey}/hours/23`);
+            const prevSnap = await getDoc(prevRef);
+            const base = prevSnap.exists() ? (prevSnap.data() as any)?.totalEnergyAtEnd : undefined;
+            if (typeof base === 'number') {
+              kwh = Math.max(0, endTotal - Number(base));
+            } else {
+              kwh = 0;
+            }
+          }
+        }
+      }
+      if (endTotal !== undefined) prevTotal = endTotal;
+      // Build AggregatedData with only totalEnergy meaningful for charts
+      const ts = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), h, 0, 0, 0);
+      results.push({
+        timestamp: ts,
+        totalPower: 0,
+        totalEnergy: Number(kwh.toFixed(6)),
+        averagePower: 0,
+        peakPower: 0,
+        lowPower: 0,
+        activeSensors: 0,
+      });
+    }
+    return results;
   }
 
   /**
@@ -140,10 +189,35 @@ export class HistoricalDataService {
     const endTime = new Date(date);
     endTime.setHours(23, 59, 59, 999);
     
-    const hourlyData = await this.getAggregatedData(startTime, endTime, 60); // 1-hour intervals
-    const total = hourlyData.reduce((sum, data) => sum + data.totalPower, 0);
+    // Prefer Firestore hourly aggregation if authenticated user is available
+    const uid = getAuth().currentUser?.uid;
+    const hourlyData = uid
+      ? await this.getDailyAggregatedFromFirestore(startTime, uid)
+      : await this.getAggregatedData(startTime, endTime, 60);
+    const total = hourlyData.reduce((sum: number, d: AggregatedData) => sum + (d.totalEnergy || 0), 0);
     
     return { hourly: hourlyData, total };
+  }
+
+  /**
+   * Get real-time data for the last N minutes
+   */
+  async getRealtimeData(minutes: number = 10): Promise<HistoricalDataPoint[]> {
+    const endTime = new Date();
+    const startTime = new Date(endTime.getTime() - minutes * 60 * 1000);
+    
+    return this.getHistoricalData(startTime, endTime);
+  }
+
+  private pad2(n: number): string { return String(n).padStart(2, '0'); }
+  private formatDateKeyUTC(d: Date): string {
+    return `${d.getUTCFullYear()}-${this.pad2(d.getUTCMonth() + 1)}-${this.pad2(d.getUTCDate())}`;
+  }
+  private shiftDateKey(dateKey: string, deltaDays: number): string {
+    const [y, m, d] = dateKey.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, (m - 1), d, 0, 0, 0, 0));
+    dt.setUTCDate(dt.getUTCDate() + deltaDays);
+    return this.formatDateKeyUTC(dt);
   }
 
   /**

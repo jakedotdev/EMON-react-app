@@ -22,7 +22,13 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ currentUser }) => {
     // Set up interval
     const cleanup = TimeFormatter.createTimeUpdateInterval(updateTime);
 
-    return cleanup;
+    // Subscribe to timezone changes for immediate UI refresh
+    const unsubscribeTz = TimeFormatter.subscribe(updateTime);
+
+    return () => {
+      cleanup();
+      unsubscribeTz();
+    };
   }, []);
 
   const greeting = TimeFormatter.getGreeting();

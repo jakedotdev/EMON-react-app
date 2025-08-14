@@ -22,9 +22,32 @@ const TimezonePicker: React.FC<Props> = ({ value, onChange }) => {
         <TouchableOpacity
           style={styles.secondaryButton}
           onPress={() => {
+            const now = new Date();
+            // 1) Try Intl resolvedOptions
             try {
               const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-              if (tz) onChange(tz);
+              if (tz) {
+                onChange(tz);
+                return;
+              }
+            } catch {}
+
+            // 2) Fallback: match device current offset to a known timezone in TIMEZONES
+            try {
+              const deviceOffsetMin = -now.getTimezoneOffset(); // e.g., +480 for UTC+8
+              const findOffsetForTz = (tz: string): number => {
+                const local = new Date(now.toLocaleString('en-US', { timeZone: tz }));
+                // offset minutes between tz local and UTC now
+                return Math.round((local.getTime() - now.getTime()) / 60000);
+              };
+              const candidate = TIMEZONES.find(tz => {
+                try {
+                  return findOffsetForTz(tz) === deviceOffsetMin;
+                } catch {
+                  return false;
+                }
+              });
+              onChange(candidate || 'UTC');
             } catch {
               onChange('UTC');
             }

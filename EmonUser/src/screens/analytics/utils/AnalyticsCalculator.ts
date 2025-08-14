@@ -54,16 +54,24 @@ export class AnalyticsCalculator {
         return `Current energy consumption is ${currentEnergy.toFixed(3)}kWh, which is ${realtimeStatus} your recent average of ${average.toFixed(3)}kWh. Peak energy usage was ${peak.toFixed(3)}kWh and lowest was ${low.toFixed(3)}kWh. Total energy consumed in this monitoring period is ${total.toFixed(3)}kWh.`;
       
       case 'Daily':
-        const peakHour = chartData.labels[chartData.data.indexOf(peak)];
+        const peakIndex = chartData.data.indexOf(peak);
+        const peakHour = peakIndex >= 0 && peakIndex < chartData.labels.length 
+          ? chartData.labels[peakIndex] 
+          : 'unknown time';
         return `Your average hourly energy consumption today is ${average.toFixed(2)}kWh. Peak usage occurred at ${peakHour} with ${peak.toFixed(2)}kWh. Total daily energy consumption is ${total.toFixed(2)}kWh, costing approximately $${(total * 0.12).toFixed(2)}.`;
       
       case 'Weekly':
-        const peakDay = chartData.labels[chartData.data.indexOf(peak)];
+        const weeklyPeakIndex = chartData.data.indexOf(peak);
+        const peakDay = weeklyPeakIndex >= 0 && weeklyPeakIndex < chartData.labels.length 
+          ? chartData.labels[weeklyPeakIndex] 
+          : 'unknown day';
         return `Weekly average daily energy consumption is ${average.toFixed(1)}kWh. Highest consumption was on ${peakDay} with ${peak.toFixed(1)}kWh. Total weekly energy consumption is ${total.toFixed(1)}kWh, costing approximately $${(total * 0.12).toFixed(2)}.`;
       
       case 'Monthly':
         const monthlyCost = (total * 0.12).toFixed(2);
-        return `Monthly average daily energy consumption is ${average.toFixed(1)}kWh. Peak daily usage was ${peak.toFixed(1)}kWh on day ${chartData.data.indexOf(peak) + 1}. Total monthly consumption is ${total.toFixed(1)}kWh, costing approximately $${monthlyCost}.`;
+        const monthlyPeakIndex = chartData.data.indexOf(peak);
+        const peakDayNumber = monthlyPeakIndex >= 0 ? monthlyPeakIndex + 1 : 0;
+        return `Monthly average daily energy consumption is ${average.toFixed(1)}kWh. Peak daily usage was ${peak.toFixed(1)}kWh on day ${peakDayNumber}. Total monthly consumption is ${total.toFixed(1)}kWh, costing approximately $${monthlyCost}.`;
       
       default:
         return 'Analysis data unavailable for the selected time period.';
@@ -129,18 +137,8 @@ export class AnalyticsCalculator {
     return recommendations.slice(0, 4); // Limit to 4 recommendations
   }
 
-  static getBarColor(value: number, average: number): string {
-    const ratio = value / average;
-    
-    if (ratio >= 1.3) return '#F44336'; // Red - High consumption
-    if (ratio >= 1.1) return '#FF9800'; // Orange - Above average
-    if (ratio >= 0.9) return '#5B934E'; // Green - Normal
-    if (ratio >= 0.7) return '#4CAF50'; // Light green - Low consumption
-    return '#2E7D32'; // Dark green - Very low consumption
-  }
-
   static formatConsumptionValue(value: number, period: TimePeriod): string {
-    // All values are now in kWh
+    // Format consumption values based on the selected time period
     switch (period) {
       case 'Realtime':
         return `${value.toFixed(3)}kWh`; // More precision for small real-time values
@@ -152,5 +150,15 @@ export class AnalyticsCalculator {
       default:
         return `${value.toFixed(2)}kWh`;
     }
+  }
+
+  static getBarColor(value: number, average: number): string {
+    const ratio = value / average;
+    
+    if (ratio >= 1.3) return '#F44336'; // Red - High consumption
+    if (ratio >= 1.1) return '#FF9800'; // Orange - Above average
+    if (ratio >= 0.9) return '#5B934E'; // Green - Normal
+    if (ratio >= 0.7) return '#4CAF50'; // Light green - Low consumption
+    return '#2E7D32'; // Dark green - Very low consumption
   }
 }
