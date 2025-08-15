@@ -247,12 +247,33 @@ export class HistoricalDataStoreService {
     const { dateKey, hourKey } = keys.hour;
     const currentRef = doc(this.db, `${userRoot}/root/hourly/${dateKey}/hours/${hourKey}`);
     try {
+      // Determine current minute in user's timezone
+      const now = this.nowInTimezone(tz);
+      const minute = now.getUTCMinutes(); // 0..59 in user's tz context
+      const bucketIndex = Math.floor(minute / 10) + 1; // 1..6
+
+      // Read existing doc to accumulate per-bucket deltas
+      const snap = await getDoc(currentRef);
+      const data = snap.exists() ? (snap.data() as any) : {};
+      const buckets: Record<string, number> = { ...(data.buckets || {}) };
+      const lastSeenTotal: number = typeof data.lastSeenTotal === 'number' ? data.lastSeenTotal : currentTotalKWh;
+
+      // Compute delta since last seen and attribute to current bucket
+      const delta = Math.max(0, Number((currentTotalKWh - lastSeenTotal).toFixed(6)));
+      const bKey = `b${bucketIndex}`; // b1..b6
+      const prevVal = typeof buckets[bKey] === 'number' ? buckets[bKey] : 0;
+      const newVal = Number((prevVal + delta).toFixed(6));
+      buckets[bKey] = newVal;
+
       await setDoc(
         currentRef,
         {
           totalEnergyAtEnd: Number(currentTotalKWh.toFixed(6)),
           timezone: tz,
           isPartial: true,
+          lastSeenTotal: Number(currentTotalKWh.toFixed(6)),
+          lastSeenMinute: minute,
+          buckets, // { b1..b6: kWh consumed within each 10-min bucket so far }
           updatedAt: serverTimestamp(),
         },
         { merge: true }

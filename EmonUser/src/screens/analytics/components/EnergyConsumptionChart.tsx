@@ -2,10 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Animated } from 'react-native';
 import { ChartData, TimePeriod } from '../managers/AnalyticsDataManager';
 import { AnalyticsCalculator } from '../utils/AnalyticsCalculator';
+import { SensorReadingModel } from '../../../models/SensorReading';
 
 interface EnergyConsumptionChartProps {
   chartData: ChartData;
   selectedPeriod: TimePeriod;
+  sensors: { [key: string]: SensorReadingModel };
   onIntervalChange?: (interval: number) => void;
   isLoading?: boolean;
   subtitle?: string;
@@ -15,6 +17,7 @@ interface EnergyConsumptionChartProps {
 const EnergyConsumptionChart: React.FC<EnergyConsumptionChartProps> = ({
   chartData,
   selectedPeriod,
+  sensors,
   onIntervalChange,
   isLoading,
   subtitle,
@@ -22,6 +25,7 @@ const EnergyConsumptionChart: React.FC<EnergyConsumptionChartProps> = ({
 }) => {
   const [innerHeight, setInnerHeight] = useState<number>(180);
   const [yStep, setYStep] = useState<number>(0.5);
+  const [showAnalysis, setShowAnalysis] = useState<boolean>(false);
   const pulse = useRef(new Animated.Value(0.4)).current;
   // Vertical offset to nudge the entire grid block down without changing tick count
   const GRID_Y_OFFSET = 5; // tweak as needed
@@ -291,6 +295,16 @@ const EnergyConsumptionChart: React.FC<EnergyConsumptionChartProps> = ({
     );
   };
 
+  // Build analysis text for the chart header toggle
+  const analysisText = useMemo(() => {
+    try {
+      return AnalyticsCalculator.generateAnalysisText(chartData, selectedPeriod, sensors);
+    } catch (e) {
+      return '';
+    }
+  }, [chartData, selectedPeriod, sensors]);
+
+  // Main component render
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -300,7 +314,26 @@ const EnergyConsumptionChart: React.FC<EnergyConsumptionChartProps> = ({
              selectedPeriod === 'Daily' ? 'Hourly Energy' :
              selectedPeriod === 'Weekly' ? 'Daily Energy' : 'Monthly Energy'} Consumption
           </Text>
-          {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+          {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+          <TouchableOpacity onPress={() => setShowAnalysis(s => !s)}>
+            <Text style={styles.viewAnalysis}>{showAnalysis ? 'Hide analysis' : 'View analysis'}</Text>
+          </TouchableOpacity>
+          {showAnalysis && !!analysisText && (
+            <>
+              <View style={styles.divider} />
+              <View style={styles.analysisContainer}>
+                {analysisText
+                  .split('\n')
+                  .filter(Boolean)
+                  .map((line, idx) => (
+                    <View key={idx} style={styles.bulletRow}>
+                      <Text style={styles.bullet}>{'•'}</Text>
+                      <Text style={styles.analysisText}>{line}</Text>
+                    </View>
+                  ))}
+              </View>
+            </>
+          )}
         </View>
         {onRefresh && (
           <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
@@ -308,11 +341,9 @@ const EnergyConsumptionChart: React.FC<EnergyConsumptionChartProps> = ({
           </TouchableOpacity>
         )}
       </View>
-      
       <View style={styles.chartArea}>
         {renderChart()}
       </View>
-      
       <View style={styles.legend}>
         {['#F44336', '#FF9800', '#5B934E', '#4CAF50', '#2E7D32'].map((color, i) => (
           <View key={i} style={styles.legendItem}>
@@ -349,6 +380,19 @@ const styles = StyleSheet.create({
   refreshIcon: { fontSize: 18, color: '#5B934E' },
   title: { fontSize: 18, fontWeight: '600', color: '#2F3E2F' },
   subtitle: { fontSize: 13, color: '#666', marginTop: 4 },
+  viewAnalysis: { marginTop: 8, fontSize: 12, color: '#5B934E', fontWeight: '600' },
+  analysisText: { fontSize: 12, color: '#2F3E2F', flexShrink: 1 },
+  divider: { height: 1, backgroundColor: '#E8EFE8', marginTop: 10, marginBottom: 8 },
+  analysisContainer: {
+    backgroundColor: '#F9FEF9',
+    borderWidth: 1,
+    borderColor: '#E0E8E0',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 0,
+  },
+  bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 },
+  bullet: { color: '#5B934E', fontSize: 14, lineHeight: 18 },
   chartArea: { height: 270, justifyContent: 'flex-end' },
   chartContainer: { flexDirection: 'row', flex: 1 },
   yAxisContainer: {
@@ -440,7 +484,7 @@ const styles = StyleSheet.create({
   },
   gridOverlay: {
     position: 'absolute',
-    top: 45,
+    top: 43,
     left: 0,
     right: 0,
     bottom: 0,

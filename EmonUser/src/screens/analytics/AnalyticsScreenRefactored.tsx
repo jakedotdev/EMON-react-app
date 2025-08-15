@@ -13,7 +13,6 @@ import { SensorReadingModel } from '../../models/SensorReading';
 import TimePeriodSelector from './components/TimePeriodSelector';
 import SummaryCards from './components/SummaryCardsImpl';
 import EnergyConsumptionChart from './components/EnergyConsumptionChart';
-import AnalysisSection from './components/AnalysisSection';
 import RecommendationsSection from './components/RecommendationsSection';
 import HistoryTable from './components/HistoryTableImpl';
 import AnalyticsDatePicker from './components/AnalyticsDatePicker';
@@ -278,20 +277,14 @@ const AnalyticsScreenRefactored: React.FC = () => {
           selectedPeriod={selectedPeriod}
         />
 
-        {/* Energy Consumption Chart */}
+        {/* Energy Consumption Chart with inline analysis */}
         <EnergyConsumptionChart
           chartData={chartData}
           selectedPeriod={selectedPeriod}
+          sensors={sensors}
           isLoading={refreshing || chartLoading}
           subtitle={subtitleForPeriod()}
           onRefresh={handleRefresh}
-        />
-
-        {/* Analysis Section */}
-        <AnalysisSection
-          chartData={chartData}
-          selectedPeriod={selectedPeriod}
-          sensors={sensors}
         />
 
         {/* Recommendations Section */}

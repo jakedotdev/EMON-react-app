@@ -147,10 +147,11 @@ export class EnergyCalculationService {
         avgEnergy = energies.length > 0 ? energies.reduce((a, b) => a + b, 0) / energies.length : 0;
       }
 
-      // Peak/Avg Energy
+      // Peak/Avg/Current instantaneous Energy
       // Avg from hourly deltas up to current hour; Peak tracked in-memory without Firestore writes
       let peakValue = 0;
       let peakDetailText: string | undefined;
+      let currentDeltaKWh = 0; // instantaneous current consumption
       if (uid) {
         const tz = await this.getUserTimezone(uid);
         const nowTz = this.nowInTimezone(tz);
@@ -218,9 +219,10 @@ export class EnergyCalculationService {
         }
         avgEnergy = hoursPassed > 0 ? (sumDeltas / hoursPassed) : 0;
 
-        // Realtime peak via in-memory tracker
-        const { peak, peakAtMs, newPeak } = peakTrackerService.updateAndGet(uid, todayKey, totalEnergy, Date.now());
+        // Realtime peak and instantaneous current delta via in-memory tracker
+        const { peak, peakAtMs, newPeak, delta } = peakTrackerService.updateAndGet(uid, todayKey, totalEnergy, Date.now());
         peakValue = peak;
+        currentDeltaKWh = Math.max(0, delta);
         if (peakAtMs) {
           peakDetailText = `at ${this.formatTime12FromDate(new Date(peakAtMs), tz)}`;
         }
@@ -243,8 +245,9 @@ export class EnergyCalculationService {
       }
 
       return {
-        totalValue: Number(totalEnergy.toFixed(6)),
-        totalLabel: 'Total Energy',
+        // Current energy consumption (instantaneous delta since last reading)
+        totalValue: Number(currentDeltaKWh.toFixed(6)),
+        totalLabel: 'Current (kWh)',
         avgValue: Number(avgEnergy.toFixed(6)),
         avgLabel: 'Avg Energy',
         peakValue: Number(peakValue.toFixed(6)),

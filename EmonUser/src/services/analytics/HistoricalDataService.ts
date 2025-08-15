@@ -29,6 +29,43 @@ export class HistoricalDataService {
   private db = getFirestore();
   
   /**
+   * Read current hour's 10-minute bucket accumulations (b1..b6) from Firestore
+   * under users/{uid}/historical/root/hourly/{YYYY-MM-DD}/hours/{HH}
+   */
+  async getCurrentHourBuckets(uid: string, tz: string): Promise<Record<string, number> | undefined> {
+    try {
+      // Compute user's current local date/hour keys using Intl in given tz
+      const now = new Date();
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: tz,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', hour12: false,
+      }).formatToParts(now);
+      const get = (t: string) => parts.find(p => p.type === t)?.value || '';
+      const dateKey = `${get('year')}-${get('month')}-${get('day')}`;
+      const hourKey = String(get('hour')).padStart(2, '0');
+
+      const path = `users/${uid}/historical/root/hourly/${dateKey}/hours/${hourKey}`;
+      const snap = await getDoc(doc(this.db, path));
+      if (!snap.exists()) return undefined;
+      const data: any = snap.data();
+      const buckets = data?.buckets as Record<string, number> | undefined;
+      if (!buckets) return undefined;
+      // Ensure numeric values
+      const result: Record<string, number> = {};
+      for (let i = 1; i <= 6; i++) {
+        const k = `b${i}`;
+        const v = buckets[k];
+        result[k] = typeof v === 'number' ? v : 0;
+      }
+      return result;
+    } catch (e) {
+      console.error('getCurrentHourBuckets error:', e);
+      return undefined;
+    }
+  }
+  
+  /**
    * Get historical sensor readings for a specific time range
    */
   async getHistoricalData(

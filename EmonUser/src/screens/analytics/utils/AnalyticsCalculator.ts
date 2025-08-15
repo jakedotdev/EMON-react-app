@@ -1,5 +1,6 @@
 import { SensorReadingModel } from '../../../models/SensorReading';
 import { ChartData, TimePeriod } from '../managers/AnalyticsDataManager';
+import { peakTrackerService } from '../../../services/analytics/PeakTrackerService';
 
 export class AnalyticsCalculator {
   static calculateEfficiencyRating(chartData: ChartData): { rating: string; color: string; description: string } {
@@ -44,34 +45,67 @@ export class AnalyticsCalculator {
 
   static generateAnalysisText(chartData: ChartData, period: TimePeriod, sensors: { [key: string]: SensorReadingModel }): string {
     const { average, peak, low, total } = chartData;
-    const currentEnergy = Object.values(sensors).reduce((sum, sensor) => {
+    // Sum of current total energies across sensors (kWh)
+    const currentTotal = Object.values(sensors).reduce((sum, sensor) => {
       return sum + (sensor.energy || 0);
     }, 0);
+    // Use in-memory tracker to derive instantaneous current consumption (delta since last reading)
+    const todayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+    const { delta } = peakTrackerService.updateAndGet('analysis', todayKey, currentTotal);
+    const currentInstant = Math.max(0, delta);
     
     switch (period) {
       case 'Realtime':
-        const realtimeStatus = currentEnergy > average * 1.1 ? 'above' : currentEnergy < average * 0.9 ? 'below' : 'at';
-        return `Current energy consumption is ${currentEnergy.toFixed(3)}kWh, which is ${realtimeStatus} your recent average of ${average.toFixed(3)}kWh. Peak energy usage was ${peak.toFixed(3)}kWh and lowest was ${low.toFixed(3)}kWh. Total energy consumed in this monitoring period is ${total.toFixed(3)}kWh.`;
+        // Realtime chart: six 10‑minute slots within the current hour.
+        const populated = Math.min(6, Math.max(0, chartData.data.length));
+        const realtimeStatus = currentInstant > average * 1.1 ? 'above' : currentInstant < average * 0.9 ? 'below' : 'near';
+        const prevTotalRT = Math.max(0, currentTotal - currentInstant);
+        const pIdx = chartData.data.indexOf(peak);
+        const pLabel = pIdx >= 0 && pIdx < chartData.labels.length ? chartData.labels[pIdx] : 'this hour';
+        return [
+          `Each bar is a 10‑minute energy delta inside the current hour (00–10, 10–20, …, 50–60).`,
+          `Current slot delta is ${currentInstant.toFixed(3)}kWh = current total ${currentTotal.toFixed(3)}kWh − previous total ${prevTotalRT.toFixed(3)}kWh (${realtimeStatus} recent mean).`,
+          `Total this hour = sum of populated slots; average = total ÷ ${populated || 1} populated slot(s).`,
+          `Peak slot (${pLabel}) is the maximum 10‑minute delta this hour; low is the minimum slot.`
+        ].join('\n');
       
       case 'Daily':
+        // Explain methodology: 24 hourly buckets; total = sum(hours); avg = total/numHours; peak = max hour
+        const nH = chartData.data.length || 24;
         const peakIndex = chartData.data.indexOf(peak);
         const peakHour = peakIndex >= 0 && peakIndex < chartData.labels.length 
           ? chartData.labels[peakIndex] 
           : 'unknown time';
-        return `Your average hourly energy consumption today is ${average.toFixed(2)}kWh. Peak usage occurred at ${peakHour} with ${peak.toFixed(2)}kWh. Total daily energy consumption is ${total.toFixed(2)}kWh, costing approximately $${(total * 0.12).toFixed(2)}.`;
+        const prevTotalDaily = Math.max(0, currentTotal - currentInstant);
+        return [
+          `Current energy is ${currentInstant.toFixed(3)}kWh derived from current total ${currentTotal.toFixed(3)}kWh minus previous total ${prevTotalDaily.toFixed(3)}kWh (delta since last reading).`,
+          `Avg consumption is ${average.toFixed(2)}kWh computed as (sum of hourly buckets from start of day to now ÷ ${nH} hours).`,
+          `Peak energy ${peak.toFixed(2)}kWh at ${peakHour} comes from the highest hourly bucket; low is the smallest hourly bucket in today’s range.`
+        ].join('\n');
       
       case 'Weekly':
+        // Explain methodology: 7 daily buckets (Mon–Sun ISO); total = sum(days); avg = total/7; peak = max day
         const weeklyPeakIndex = chartData.data.indexOf(peak);
         const peakDay = weeklyPeakIndex >= 0 && weeklyPeakIndex < chartData.labels.length 
           ? chartData.labels[weeklyPeakIndex] 
           : 'unknown day';
-        return `Weekly average daily energy consumption is ${average.toFixed(1)}kWh. Highest consumption was on ${peakDay} with ${peak.toFixed(1)}kWh. Total weekly energy consumption is ${total.toFixed(1)}kWh, costing approximately $${(total * 0.12).toFixed(2)}.`;
+        const nD = chartData.data.length || 7;
+        return [
+          `Weekly view aggregates daily deltas into one bucket per day (timezone-aware).`,
+          `Average is computed as weekly total ÷ ${nD} days; total is ∑ of daily buckets.`,
+          `Peak day (${peakDay}) is identified as the max daily bucket; low is the min daily bucket.`
+        ].join('\n');
       
       case 'Monthly':
-        const monthlyCost = (total * 0.12).toFixed(2);
+        // Explain methodology: daily buckets across the month; total=sum(days); avg=total/numDays; peak=max day index
         const monthlyPeakIndex = chartData.data.indexOf(peak);
+        const nMD = chartData.data.length || 30;
         const peakDayNumber = monthlyPeakIndex >= 0 ? monthlyPeakIndex + 1 : 0;
-        return `Monthly average daily energy consumption is ${average.toFixed(1)}kWh. Peak daily usage was ${peak.toFixed(1)}kWh on day ${peakDayNumber}. Total monthly consumption is ${total.toFixed(1)}kWh, costing approximately $${monthlyCost}.`;
+        return [
+          `Monthly view sums per‑day buckets across the selected month (respecting timezone).`,
+          `Average is monthly total ÷ ${nMD} days; total is ∑ of daily buckets.`,
+          `Peak occurred on day ${peakDayNumber} (max daily bucket); low is the min daily bucket.`
+        ].join('\n');
       
       default:
         return 'Analysis data unavailable for the selected time period.';
@@ -89,7 +123,7 @@ export class AnalyticsCalculator {
     const avgThreshold = period === 'Realtime' ? 0.1 : period === 'Daily' ? 2.0 : 10.0;
     if (average > avgThreshold) {
       recommendations.push('Consider using energy-efficient appliances to reduce overall energy consumption');
-      recommendations.push('Schedule high-energy devices during off-peak hours to save on electricity costs');
+      recommendations.push('Schedule high-energy devices during off-peak hours to reduce peak load');
     }
     
     // High variability recommendations

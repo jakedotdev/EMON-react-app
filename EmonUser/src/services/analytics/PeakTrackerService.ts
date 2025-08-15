@@ -23,7 +23,12 @@ class PeakTrackerService {
     this.store.set(this.key(uid, dateKey), state);
   }
 
-  updateAndGet(uid: string, dateKey: string, currentTotal: number, nowMs?: number): { peak: number; last: number | undefined; peakAtMs?: number; newPeak: boolean } {
+  updateAndGet(
+    uid: string,
+    dateKey: string,
+    currentTotal: number,
+    nowMs?: number
+  ): { peak: number; last: number | undefined; peakAtMs?: number; newPeak: boolean; delta: number } {
     const k = this.key(uid, dateKey);
     const state = this.store.get(k) || { lastTotal: undefined, peakDelta: 0 } as PeakState;
 
@@ -51,7 +56,7 @@ class PeakTrackerService {
     state.lastTotal = currentTotal;
     this.store.set(k, state);
 
-    return { peak: state.peakDelta, last: state.lastTotal, peakAtMs: state.peakAtMs, newPeak };
+    return { peak: state.peakDelta, last: state.lastTotal, peakAtMs: state.peakAtMs, newPeak, delta };
   }
 
   reset(uid: string, dateKey: string) {

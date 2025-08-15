@@ -21,7 +21,6 @@ export interface HistoryData {
   date: string;
   time: string;
   consumption: number;
-  cost: number;
   efficiency: string;
 }
 
@@ -45,6 +44,11 @@ export class AnalyticsDataManager {
   private setRefreshing: (refreshing: boolean) => void;
   private setHistoryData: (data: HistoryData[]) => void;
   private setSelectedHistoryDate: (date: Date | null) => void;
+  // Keep latest sensors and uid for periodic persistence while app is open
+  private lastSensors: { [key: string]: SensorReadingModel } | null = null;
+  private lastUid: string | undefined;
+  private boundaryTimer: any = null;
+  private didBackfillToday: boolean = false;
 
   constructor(
     setSensors: (sensors: { [key: string]: SensorReadingModel }) => void,
@@ -71,21 +75,48 @@ export class AnalyticsDataManager {
     
     const sensorUnsubscribe = await this.loadSensorData();
     
+    // Start a lightweight boundary timer (every ~60s) to persist aggregates client-side
+    // This replaces server-side scheduled functions while on free tier.
+    if (!this.boundaryTimer) {
+      this.boundaryTimer = setInterval(() => {
+        try {
+          const uid = this.lastUid ?? getAuth().currentUser?.uid;
+          if (uid && this.lastSensors) {
+            void historicalDataStoreService.capturePeriodics(uid, this.lastSensors);
+          }
+        } catch (e) {
+          // Non-fatal; keep UI responsive
+          console.warn('boundaryTimer capturePeriodics error:', e);
+        }
+      }, 60_000);
+    }
+    
     return () => {
       sensorUnsubscribe();
+      if (this.boundaryTimer) {
+        clearInterval(this.boundaryTimer);
+        this.boundaryTimer = null;
+      }
     };
   }
 
   async loadSensorData(): Promise<() => void> {
     const unsubscribe = sensorService.listenToAllSensors((sensorData) => {
       this.setSensors(sensorData);
+      this.lastSensors = sensorData;
       // Persist historical deltas based on user's preferred timezone
       const uid = getAuth().currentUser?.uid;
       if (uid) {
+        this.lastUid = uid;
         // Fire and forget; errors logged inside service if thrown up the stack
         void historicalDataStoreService.capturePeriodics(uid, sensorData);
         // Also try to backfill any missing daily docs up to yesterday
         void historicalDataStoreService.backfillMissingDaily(uid);
+        // One-time attempt to backfill today's missing hourly docs with provisional series
+        if (!this.didBackfillToday) {
+          this.didBackfillToday = true;
+          void historicalDataStoreService.backfillTodayHourlyProvisionalRandom(uid, sensorData);
+        }
       }
       this.generateChartData('Realtime', sensorData);
       // Also generate summary card data for initial load
@@ -139,7 +170,7 @@ export class AnalyticsDataManager {
           // Current hour split into 6 buckets: every 10 minutes (hh:10, ..., nextHour 00)
           // Future bucket (not yet reached) should display 0
           {
-            // Fetch last 60 minutes of realtime points
+            // Fetch last 60 minutes of realtime points (fallback source)
             const realtimeData = await historicalDataService.getRealtimeData(60);
 
             // Resolve user's preferred timezone
@@ -166,6 +197,9 @@ export class AnalyticsDataManager {
             // Start of hour in user's local time, converted to actual epoch
             const hourStartEpoch = Date.UTC(y, mo - 1, d, hr, 0, 0, 0) - tzOffsetMs;
 
+            // Try to get Firestore buckets for current hour
+            const buckets = uid ? await historicalDataService.getCurrentHourBuckets(uid, tz) : undefined;
+
             // Formatter for labels in user's timezone, 12-hour with AM/PM (e.g., 9:10 PM)
             const fmt = new Intl.DateTimeFormat('en-US', {
               timeZone: tz,
@@ -179,7 +213,6 @@ export class AnalyticsDataManager {
               const bucketEndMs = hourStartEpoch + minutesMark * 60 * 1000;
               const bucketStartMs = bucketEndMs - 10 * 60 * 1000;
               const bucketEnd = new Date(bucketEndMs);
-              const bucketStart = new Date(bucketStartMs);
 
               // Label end-of-bucket time in user's timezone; for 60, show next hour 00
               const labelDate = minutesMark === 60
@@ -193,15 +226,19 @@ export class AnalyticsDataManager {
                 continue;
               }
 
-              const intervalData = realtimeData.filter(
-                (p) => p.timestamp >= bucketStartMs && p.timestamp < bucketEndMs
-              );
-
-              const avgEnergy = intervalData.length > 0
-                ? intervalData.reduce((sum, p) => sum + (p.energy || 0), 0) / intervalData.length
-                : 0;
-
-              data.push(avgEnergy);
+              if (buckets) {
+                const v = buckets[`b${i}`] ?? 0;
+                data.push(typeof v === 'number' ? v : 0);
+              } else {
+                // Fallback: compute average from realtime points in this window
+                const intervalData = realtimeData.filter(
+                  (p) => p.timestamp >= bucketStartMs && p.timestamp < bucketEndMs
+                );
+                const avgEnergy = intervalData.length > 0
+                  ? intervalData.reduce((sum, p) => sum + (p.energy || 0), 0) / intervalData.length
+                  : 0;
+                data.push(avgEnergy);
+              }
             }
           }
           break;
@@ -405,8 +442,6 @@ export class AnalyticsDataManager {
         });
         
         const energyKWh = hourData ? hourData.totalEnergy : 0; // Use totalEnergy directly
-        const cost = historicalDataService.calculateEnergyCost(energyKWh);
-        
         // Calculate efficiency based on real energy consumption patterns
         let efficiency = 'Good';
         if (hourly.length > 0) {
@@ -420,7 +455,6 @@ export class AnalyticsDataManager {
           date: selectedDate.toLocaleDateString(),
           time,
           consumption: Math.round(energyKWh * 1000), // Convert back to Wh for display
-          cost: parseFloat(cost.toFixed(3)),
           efficiency
         });
       }
@@ -444,13 +478,10 @@ export class AnalyticsDataManager {
     for (let hour = 0; hour < 24; hour++) {
       const time = `${hour.toString().padStart(2, '0')}:00`;
       const energyKWh = currentEnergy; // Use actual current energy
-      const cost = historicalDataService.calculateEnergyCost(energyKWh);
-      
       historyData.push({
         date: selectedDate.toLocaleDateString(),
         time,
         consumption: Math.round(energyKWh * 1000), // Convert to Wh for display
-        cost: parseFloat(cost.toFixed(3)),
         efficiency: 'Good'
       });
     }
@@ -465,12 +496,19 @@ export class AnalyticsDataManager {
     try {
       const sensorData = await sensorService.getAllSensorData();
       this.setSensors(sensorData);
+      this.lastSensors = sensorData;
       // Persist historical deltas on manual refresh as well
       const uid = getAuth().currentUser?.uid;
       if (uid) {
+        this.lastUid = uid;
         void historicalDataStoreService.capturePeriodics(uid, sensorData);
         // Attempt daily backfill on manual refresh as well
         void historicalDataStoreService.backfillMissingDaily(uid);
+        // Opportunistically backfill today's hourlies if still not done
+        if (!this.didBackfillToday) {
+          this.didBackfillToday = true;
+          void historicalDataStoreService.backfillTodayHourlyProvisionalRandom(uid, sensorData);
+        }
       }
       
       // Regenerate chart data with fresh sensor data

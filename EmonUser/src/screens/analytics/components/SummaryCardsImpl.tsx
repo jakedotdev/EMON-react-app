@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { TimePeriod } from '../managers/AnalyticsDataManager';
 import { SummaryCardData } from '../../../services/analytics/EnergyCalculationService';
 import { AnalyticsCalculator } from '../utils/AnalyticsCalculator';
@@ -18,6 +18,7 @@ const safeStringify = (value: unknown): string => {
 };
 
 const SummaryCards: React.FC<SummaryCardsProps> = ({ summaryCardData, selectedPeriod }) => {
+  const [showAnalysis, setShowAnalysis] = useState<boolean>(false);
   const normalizeUnits = (s: string): string =>
     s
       .replace(/\sWh\b/g, '\u00A0Wh')
@@ -41,6 +42,65 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summaryCardData, selectedPe
     { key: 'avg', icon: 'Ø', label: safeStringify(summaryCardData.avgLabel), value: formatValue(summaryCardData.avgValue), color: '#2196F3' },
     { key: 'peak', icon: '⚡', label: safeStringify(summaryCardData.peakLabel), value: formatValue(summaryCardData.peakValue), detail: summaryCardData.peakDetail ? safeStringify(summaryCardData.peakDetail) : '', color: '#FF9800' },
   ];
+
+  const analysisFor = (key: string): string => {
+    try {
+      switch (key) {
+        case 'total': {
+          const totalStr = AnalyticsCalculator.formatConsumptionValue(Number(summaryCardData.totalValue || 0), selectedPeriod);
+          if (selectedPeriod === 'Realtime') {
+            return `Current is ${totalStr} representing the instantaneous delta since the last sensor reading (current total − previous total).`;
+          }
+          if (selectedPeriod === 'Daily') {
+            return `Daily total is ${totalStr} from summing 24 hourly deltas; falls back to differences of totalEnergyAtEnd when a delta is missing.`;
+          }
+          if (selectedPeriod === 'Weekly') {
+            return `Weekly total is ${totalStr} from adding each day’s total across the ISO week (Mon–Sun).`;
+          }
+          // Monthly
+          return `Monthly total is ${totalStr} from adding each day’s total across the month.`;
+        }
+        case 'avg': {
+          const avgStr = AnalyticsCalculator.formatConsumptionValue(Number(summaryCardData.avgValue || 0), selectedPeriod);
+          if (selectedPeriod === 'Realtime') {
+            return `Avg so far today is ${avgStr} computed as (sum of hourly deltas from 00:00 to current hour ÷ hours passed).`;
+          }
+          if (selectedPeriod === 'Daily') {
+            return `Avg hourly is ${avgStr} computed as (daily total ÷ 24).`;
+          }
+          if (selectedPeriod === 'Weekly') {
+            return `Avg daily is ${avgStr} computed as (weekly total ÷ 7).`;
+          }
+          // Monthly
+          return `Avg weekly is ${avgStr} computed as (monthly total ÷ number of ISO weeks overlapping the month).`;
+        }
+        case 'peak': {
+          const peakStr = AnalyticsCalculator.formatConsumptionValue(Number(summaryCardData.peakValue || 0), selectedPeriod);
+          const detail = summaryCardData.peakDetail ? ` ${summaryCardData.peakDetail}` : '';
+          if (selectedPeriod === 'Realtime') {
+            return `Peak is ${peakStr}${detail}, identified as the highest instantaneous delta observed today.`;
+          }
+          if (selectedPeriod === 'Daily') {
+            return `Peak hour is ${peakStr}${detail}, identified as the largest hourly delta for the day.`;
+          }
+          if (selectedPeriod === 'Weekly') {
+            return `Peak day is ${peakStr}${detail}, identified as the largest daily total within the week.`;
+          }
+          // Monthly
+          return `Peak week is ${peakStr}${detail}, identified as the ISO week with the largest sum in the month.`;
+        }
+        default:
+          return '';
+      }
+    } catch {
+      return '';
+    }
+  };
+
+  const combinedAnalysis = () => {
+    const parts = ['total', 'avg', 'peak'].map((k) => analysisFor(k));
+    return parts.filter(Boolean).join('\n');
+  };
 
   return (
     <View style={styles.container}>
@@ -66,6 +126,23 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summaryCardData, selectedPe
           </View>
         ))}
       </View>
+      <View style={styles.divider} />
+      <TouchableOpacity onPress={() => setShowAnalysis((s) => !s)}>
+        <Text style={styles.viewAnalysis}>{showAnalysis ? 'Hide summary analysis' : 'View summary analysis'}</Text>
+      </TouchableOpacity>
+      {showAnalysis && (
+        <View style={styles.analysisContainer}>
+          {combinedAnalysis()
+            .split('\n')
+            .filter(Boolean)
+            .map((line, idx) => (
+              <View key={idx} style={styles.bulletRow}>
+                <Text style={styles.bullet}>{'•'}</Text>
+                <Text style={styles.analysisText}>{line}</Text>
+              </View>
+            ))}
+        </View>
+      )}
     </View>
   );
 };
@@ -153,6 +230,42 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#556055',
     width: '100%',
+  },
+  viewAnalysis: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#5B934E',
+    fontWeight: '600',
+  },
+  analysisText: {
+    fontSize: 12,
+    color: '#2F3E2F',
+    flexShrink: 1,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E8EFE8',
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  analysisContainer: {
+    backgroundColor: '#F9FEF9',
+    borderWidth: 1,
+    borderColor: '#E0E8E0',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 8,
+  },
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 6,
+  },
+  bullet: {
+    color: '#5B934E',
+    fontSize: 14,
+    lineHeight: 18,
   },
 });
 
