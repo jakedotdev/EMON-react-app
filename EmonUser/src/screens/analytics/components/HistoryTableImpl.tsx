@@ -1,11 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native';
-import { HistoryData } from '../managers/AnalyticsDataManager';
+import { HistoryData, TimePeriod } from '../managers/AnalyticsDataManager';
 import { SensorReadingModel } from '../../../models/SensorReading';
 
 interface HistoryTableProps {
   historyData: HistoryData[] | null | undefined;
   selectedDate: Date | null | undefined;
+  selectedPeriod: TimePeriod;
   onDateSelect?: (d: Date) => void;
   sensors: { [key: string]: SensorReadingModel };
 }
@@ -26,10 +27,13 @@ const COLORS = {
   muted: '#6B6B6B',
 } as const;
 
-const HistoryTable: React.FC<HistoryTableProps> = ({ historyData, selectedDate }) => {
+const HistoryTable: React.FC<HistoryTableProps> = ({ historyData, selectedDate, selectedPeriod }) => {
   const items = historyData ?? [];
 
   const formatTime12 = (t: string): string => {
+    // If already formatted with AM/PM, return as-is to avoid duplicates
+    const up = (t || '').toUpperCase();
+    if (up.includes(' AM') || up.includes(' PM')) return t;
     // Expecting HH:MM
     const parts = t.split(':');
     if (parts.length < 2) return t;
@@ -65,19 +69,94 @@ const HistoryTable: React.FC<HistoryTableProps> = ({ historyData, selectedDate }
     return COLORS.error;
   };
 
+  // Compute simple average across items to derive relative level coding
+  const avgConsumption = items.length
+    ? items.reduce((s, it) => s + (typeof it.consumption === 'number' ? it.consumption : 0), 0) / items.length
+    : 0;
+
+  const getLevelAndColor = (wh?: number): { label: string; color: string } => {
+    const v = typeof wh === 'number' ? wh : 0;
+    if (avgConsumption <= 0) return { label: '', color: COLORS.muted };
+    const ratio = v / avgConsumption;
+    if (ratio >= 1.3) return { label: 'High', color: '#F44336' };
+    if (ratio >= 1.1) return { label: 'Above avg', color: '#FF9800' };
+    if (ratio >= 0.9) return { label: 'Normal', color: '#5B934E' };
+    if (ratio >= 0.7) return { label: 'Low', color: '#4CAF50' };
+    return { label: 'Very low', color: '#2E7D32' };
+  };
+
+  const getLevelPillColors = (label: string): { bg: string; text: string } => {
+    switch (label) {
+      case 'High':
+        return { bg: '#FDECEA', text: '#C62828' }; // light red
+      case 'Above avg':
+        return { bg: '#FFF4E5', text: '#EF6C00' }; // light orange
+      case 'Normal':
+        return { bg: '#ECF6EC', text: '#2E7D32' }; // light green
+      case 'Low':
+        return { bg: '#EAF7EA', text: '#2E7D32' };
+      case 'Very low':
+        return { bg: '#E6F5E6', text: '#1B5E20' };
+      default:
+        return { bg: '#F2F2F2', text: '#6B6B6B' };
+    }
+  };
+
   const head = (
     <View style={[styles.row, styles.headerRow]}>
       <Text style={[styles.th, styles.timeCol]}>Time</Text>
       <Text style={[styles.th, styles.energyCol]}>Energy</Text>
-      <Text style={[styles.th, styles.effCol]}>Efficiency</Text>
+      <Text style={[styles.th, styles.levelCol]}>Level</Text>
     </View>
   );
 
+  // Header subtitle by period
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const fmtDate = (d: Date) => `${monthNames[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  const fmtMonth = (d: Date) => `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+  const fmtHour = (d: Date) => {
+    let h = d.getHours();
+    const m = '00';
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    let h12 = h % 12; if (h12 === 0) h12 = 12;
+    return `${h12}:${m} ${ampm}`;
+  };
+  const getISOWeekRange = (ref: Date) => {
+    // Monday..Sunday range for the week containing ref
+    const dateUTC = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), ref.getUTCDate()));
+    const dayOfWeek = (dateUTC.getUTCDay() || 7);
+    const monday = new Date(dateUTC);
+    monday.setUTCDate(dateUTC.getUTCDate() - ((dayOfWeek === 7 ? 0 : dayOfWeek) - 1));
+    const sunday = new Date(monday);
+    sunday.setUTCDate(monday.getUTCDate() + 6);
+    return { start: new Date(monday.getTime()), end: new Date(sunday.getTime()) };
+  };
+  const headerSubtitle = () => {
+    const now = new Date();
+    const ref = selectedDate ?? now;
+    switch (selectedPeriod) {
+      case 'Realtime': {
+        return `${fmtDate(now)} • ${fmtHour(now)}`;
+      }
+      case 'Daily': {
+        return fmtDate(ref);
+      }
+      case 'Weekly': {
+        const { start, end } = getISOWeekRange(ref);
+        return `${monthNames[start.getMonth()]} ${start.getDate()}–${monthNames[end.getMonth()]} ${end.getDate()}, ${end.getFullYear()}`;
+      }
+      case 'Monthly': {
+        return fmtMonth(ref);
+      }
+      default:
+        return '';
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>
-        {selectedDate ? `History • ${selectedDate.toDateString()}` : 'History'}
-      </Text>
+      <Text style={styles.header}>History</Text>
+      <Text style={styles.subheader}>{headerSubtitle()}</Text>
 
       {items.length === 0 ? (
         <Text style={styles.empty}>No history for this date.</Text>
@@ -92,11 +171,18 @@ const HistoryTable: React.FC<HistoryTableProps> = ({ historyData, selectedDate }
               showsVerticalScrollIndicator={true}
             >
               {items.map((item, idx) => (
-                <View key={`${item.date}_${item.time}_${idx}`}>
-                  <View style={styles.row}>
+                <View key={`${safeStringify(item.date)}-${idx}`}>
+                  <View style={[styles.row, idx % 2 === 1 && styles.altRow]}>
                     <Text style={[styles.cell, styles.timeCol]}>{formatTime12(safeStringify(item.time))}</Text>
-                    <Text style={[styles.cell, styles.energyCol, { color: getEnergyColor(item.consumption) }]}>{safeStringify(item.consumption)} Wh</Text>
-                    <Text style={[styles.cell, styles.effCol, { color: getEfficiencyColor(item.efficiency) }]}>{safeStringify(item.efficiency)}</Text>
+                    <Text style={[styles.cell, styles.energyCol]}>
+                      <Text style={[styles.energyValue, { color: getEnergyColor(item.consumption) }]}>{safeStringify(item.consumption)}</Text>
+                      <Text style={styles.unit}> Wh</Text>
+                    </Text>
+                    {(() => { const lv = getLevelAndColor(item.consumption); const c = getLevelPillColors(lv.label); return (
+                      <View style={[styles.levelCol, styles.levelPill, { backgroundColor: c.bg }]}>
+                        <Text style={[styles.levelPillText, { color: c.text }]}>{lv.label}</Text>
+                      </View>
+                    ); })()}
                   </View>
                   {idx < items.length - 1 && <View style={styles.sep} />}
                 </View>
@@ -123,10 +209,16 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   header: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     color: '#5B934E',
     marginBottom: 10,
+  },
+  subheader: {
+    marginTop: -6,
+    marginBottom: 8,
+    color: '#6B6B6B',
+    fontSize: 12,
   },
   empty: {
     color: '#6B6B6B',
@@ -152,10 +244,12 @@ const styles = StyleSheet.create({
   },
   th: {
     fontWeight: '700',
-    color: '#2F3E2F',
+    color: '#3A4A3A',
+    fontSize: 12,
   },
   cell: {
-    color: '#2F3E2F',
+    color: '#3A4A3A',
+    fontSize: 12,
   },
   timeCol: {
     flex: 1,
@@ -163,21 +257,44 @@ const styles = StyleSheet.create({
   },
   energyCol: {
     flex: 1,
-    textAlign: 'right',
+    textAlign: 'center',
     fontWeight: '700',
   },
-  effCol: {
-    width: 100,
-    textAlign: 'right',
+  energyValue: {
+    fontSize: 12,
     fontWeight: '700',
+  },
+  unit: {
+    fontSize: 11,
+    color: '#8A8A8A',
+    fontWeight: '500',
+  },
+  levelCol: {
+    textAlign: 'center',
+    width: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  levelPill: {
+    paddingHorizontal: 0,
+    paddingVertical: 2,
+    borderRadius: 8,
+    alignSelf: 'flex-end',
+  },
+  levelPillText: {
+    fontWeight: '700',
+    fontSize: 10,
+  },
+  altRow: {
+    backgroundColor: '#FCFCFC',
   },
   sep: {
     height: 1,
-    backgroundColor: '#EEF2EE',
+    backgroundColor: '#F1F3F1',
   },
   scrollShell: {
-    // exactly 6 rows visible (approx 44px row + 1px separator)
-    maxHeight: 6 * 45,
+    // ~6 rows visible
+    maxHeight: 6 * 40,
   },
   scroll: {
     width: '100%',

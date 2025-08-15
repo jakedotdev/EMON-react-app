@@ -70,6 +70,137 @@ export class AnalyticsDataManager {
     this.setSelectedHistoryDate = setSelectedHistoryDate;
   }
 
+  // New: generate history rows per selected period
+  async generateHistoryDataForPeriod(period: TimePeriod, sensors: { [key: string]: SensorReadingModel }, selectedDate?: Date): Promise<HistoryData[]> {
+    try {
+      const rows: HistoryData[] = [];
+      const now = new Date();
+      const uid = getAuth().currentUser?.uid;
+
+      if (period === 'Realtime') {
+        // Mirror realtime chart logic: 6 buckets of current hour, end labels in user tz
+        const tz = uid ? await energyCalculationService.getUserTimezone(uid) : 'UTC';
+        const nowActual = new Date();
+        const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(nowActual);
+        const getNum = (t: string) => Number(parts.find(p => p.type === t)?.value);
+        const y = getNum('year');
+        const mo = getNum('month');
+        const d = getNum('day');
+        const hr = getNum('hour');
+        const min = getNum('minute');
+        const localAsUTC = Date.UTC(y, mo - 1, d, hr, min, 0, 0);
+        const tzOffsetMs = localAsUTC - nowActual.getTime();
+        const hourStartEpoch = Date.UTC(y, mo - 1, d, hr, 0, 0, 0) - tzOffsetMs;
+
+        const fmt = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true });
+        const buckets = uid ? await historicalDataService.getCurrentHourBuckets(uid, tz) : undefined;
+        const realtimeData = await historicalDataService.getRealtimeData(60);
+
+        const values: number[] = [];
+        const labels: string[] = [];
+        for (let i = 1; i <= 6; i++) {
+          const minutesMark = i * 10;
+          const bucketEndMs = hourStartEpoch + minutesMark * 60 * 1000;
+          const bucketStartMs = bucketEndMs - 10 * 60 * 1000;
+          const labelDate = minutesMark === 60 ? new Date(hourStartEpoch + 60 * 60 * 1000) : new Date(bucketEndMs);
+          labels.push(fmt.format(labelDate));
+          if (bucketEndMs > nowActual.getTime()) {
+            values.push(0);
+            continue;
+          }
+          if (buckets) {
+            const v = buckets[`b${i}`] ?? 0;
+            values.push(typeof v === 'number' ? v : 0);
+          } else {
+            const intervalData = realtimeData.filter(p => p.timestamp >= bucketStartMs && p.timestamp < bucketEndMs);
+            const avgEnergy = intervalData.length > 0 ? intervalData.reduce((sum, p) => sum + (p.energy || 0), 0) / intervalData.length : 0;
+            values.push(avgEnergy);
+          }
+        }
+        const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+        for (let i = 0; i < labels.length; i++) {
+          const v = values[i] || 0;
+          const eff = avg > 0 ? (v > avg * 1.3 ? 'Poor' : v > avg * 1.1 ? 'Fair' : v < avg * 0.8 ? 'Excellent' : 'Good') : 'Good';
+          rows.push({ date: now.toLocaleDateString(), time: labels[i], consumption: Math.round(v * 1000), efficiency: eff });
+        }
+        this.setHistoryData(rows);
+        return rows;
+      }
+
+      if (period === 'Daily') {
+        const date = selectedDate ?? now;
+        return await this.generateHistoryData(date, sensors);
+      }
+
+      if (period === 'Weekly') {
+        const ref = selectedDate ?? now;
+        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const items: { label: string; total: number }[] = [];
+        // Compute Monday of the week
+        const dateUTC = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), ref.getUTCDate()));
+        const dayOfWeek = (dateUTC.getUTCDay() || 7);
+        const monday = new Date(dateUTC);
+        monday.setUTCDate(dateUTC.getUTCDate() - ((dayOfWeek === 7 ? 0 : dayOfWeek) - 1));
+        for (let i = 0; i < 7; i++) {
+          const day = new Date(monday);
+          day.setUTCDate(monday.getUTCDate() + i);
+          const local = new Date(day);
+          local.setHours(0, 0, 0, 0);
+          const { total } = await historicalDataService.getDailyConsumption(local);
+          items.push({ label: days[i], total });
+        }
+        const avg = items.length ? items.reduce((s, it) => s + it.total, 0) / items.length : 0;
+        for (const it of items) {
+          const v = it.total;
+          const eff = avg > 0 ? (v > avg * 1.3 ? 'Poor' : v > avg * 1.1 ? 'Fair' : v < avg * 0.8 ? 'Excellent' : 'Good') : 'Good';
+          rows.push({ date: ref.toLocaleDateString(), time: it.label, consumption: Math.round(v * 1000), efficiency: eff });
+        }
+        this.setHistoryData(rows);
+        return rows;
+      }
+
+      if (period === 'Monthly') {
+        const ref = selectedDate ?? now;
+        const year = ref.getFullYear();
+        const month = ref.getMonth();
+        const monthStart = new Date(year, month, 1, 0, 0, 0, 0);
+        const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+        const getISOWeek = (d: Date) => {
+          const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+          const dayNum = (date.getUTCDay() + 6) % 7;
+          date.setUTCDate(date.getUTCDate() - dayNum + 3);
+          const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+          const diff = date.getTime() - firstThursday.getTime();
+          return 1 + Math.round(diff / (7 * 24 * 3600 * 1000));
+        };
+        const weekTotals = new Map<number, number>();
+        for (let dt = new Date(monthStart); dt.getTime() <= monthEnd.getTime(); dt.setDate(dt.getDate() + 1)) {
+          const day = new Date(dt);
+          day.setHours(0, 0, 0, 0);
+          const { total } = await historicalDataService.getDailyConsumption(day);
+          const w = getISOWeek(day);
+          weekTotals.set(w, (weekTotals.get(w) || 0) + total);
+        }
+        const weeks = Array.from(weekTotals.keys()).sort((a, b) => a - b);
+        const avg = weeks.length ? weeks.reduce((s, w) => s + (weekTotals.get(w) || 0), 0) / weeks.length : 0;
+        for (const w of weeks) {
+          const v = weekTotals.get(w) || 0;
+          const eff = avg > 0 ? (v > avg * 1.3 ? 'Poor' : v > avg * 1.1 ? 'Fair' : v < avg * 0.8 ? 'Excellent' : 'Good') : 'Good';
+          rows.push({ date: ref.toLocaleDateString(), time: `W${w}`, consumption: Math.round(v * 1000), efficiency: eff });
+        }
+        this.setHistoryData(rows);
+        return rows;
+      }
+
+      this.setHistoryData([]);
+      return [];
+    } catch (e) {
+      console.error('Error generating history rows:', e);
+      this.setHistoryData([]);
+      return [];
+    }
+  }
+
   async initialize(): Promise<() => void> {
     this.setLoading(true);
     

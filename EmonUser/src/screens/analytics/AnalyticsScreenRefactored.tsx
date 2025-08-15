@@ -87,20 +87,25 @@ const AnalyticsScreenRefactored: React.FC = () => {
     setSelectedPeriod(period);
     setChartLoading(true);
     try {
+      const dateArg = period === 'Realtime' ? undefined : (selectedHistoryDate || undefined);
       await Promise.all([
-        dataManager.generateChartData(period, sensors, selectedHistoryDate || undefined),
-        dataManager.generateSummaryCardData(period, selectedHistoryDate || undefined)
+        dataManager.generateChartData(period, sensors, dateArg),
+        dataManager.generateSummaryCardData(period, dateArg),
       ]);
+      // Keep history table aligned with the selected period's granularity
+      await dataManager.generateHistoryDataForPeriod(period, sensors, dateArg);
     } finally {
       setChartLoading(false);
     }
   };
 
   const loadData = useCallback(async () => {
+    const dateArg = selectedPeriod === 'Realtime' ? undefined : (selectedHistoryDate || undefined);
     await Promise.all([
-      dataManager.generateChartData(selectedPeriod, sensors, selectedHistoryDate || undefined),
-      dataManager.generateSummaryCardData(selectedPeriod, selectedHistoryDate || undefined)
+      dataManager.generateChartData(selectedPeriod, sensors, dateArg),
+      dataManager.generateSummaryCardData(selectedPeriod, dateArg),
     ]);
+    await dataManager.generateHistoryDataForPeriod(selectedPeriod, sensors, dateArg);
   }, [selectedPeriod, sensors, selectedHistoryDate, dataManager]);
 
   const handleRefresh = useCallback(() => {
@@ -137,8 +142,8 @@ const AnalyticsScreenRefactored: React.FC = () => {
 
   const handleDateSelect = async (date: Date) => {
     setSelectedHistoryDate(date);
-    // Always refresh history for picked date (used by HistoryTable)
-    await dataManager.generateHistoryData(date, sensors);
+    // Generate history aligned to the current period using the chosen date
+    await dataManager.generateHistoryDataForPeriod(selectedPeriod, sensors, date);
     // Regenerate chart and summary for the active period (excluding Realtime)
     if (selectedPeriod !== 'Realtime') {
       setChartLoading(true);
@@ -162,6 +167,7 @@ const AnalyticsScreenRefactored: React.FC = () => {
         dataManager.generateChartData('Weekly', sensors, anyDateInWeek),
         dataManager.generateSummaryCardData('Weekly', anyDateInWeek),
       ]);
+      await dataManager.generateHistoryDataForPeriod('Weekly', sensors, anyDateInWeek);
     } finally {
       setChartLoading(false);
     }
@@ -175,6 +181,7 @@ const AnalyticsScreenRefactored: React.FC = () => {
         dataManager.generateChartData('Monthly', sensors, firstDayOfMonth),
         dataManager.generateSummaryCardData('Monthly', firstDayOfMonth),
       ]);
+      await dataManager.generateHistoryDataForPeriod('Monthly', sensors, firstDayOfMonth);
     } finally {
       setChartLoading(false);
     }
@@ -298,6 +305,7 @@ const AnalyticsScreenRefactored: React.FC = () => {
         <HistoryTable
           historyData={historyData}
           selectedDate={selectedHistoryDate}
+          selectedPeriod={selectedPeriod}
           onDateSelect={handleDateSelect}
           sensors={sensors}
         />

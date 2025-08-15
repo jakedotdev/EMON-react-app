@@ -113,62 +113,110 @@ export class AnalyticsCalculator {
   }
 
   static generateRecommendations(chartData: ChartData, period: TimePeriod, sensors: { [key: string]: SensorReadingModel }): string[] {
-    const { average, peak, low, total } = chartData;
-    const recommendations: string[] = [];
-    
-    // Calculate variability based on energy consumption
-    const variability = average > 0 ? (peak - low) / average : 0;
-    
-    // High energy consumption recommendations (adjusted thresholds for kWh)
-    const avgThreshold = period === 'Realtime' ? 0.1 : period === 'Daily' ? 2.0 : 10.0;
-    if (average > avgThreshold) {
-      recommendations.push('Consider using energy-efficient appliances to reduce overall energy consumption');
-      recommendations.push('Schedule high-energy devices during off-peak hours to reduce peak load');
-    }
-    
-    // High variability recommendations
-    if (variability > 1.5) {
-      recommendations.push('Your energy consumption shows high variability - try to spread usage more evenly');
-      recommendations.push('Consider using smart timers for appliances to optimize energy distribution');
-    }
-    
-    // Peak usage recommendations
-    if (peak > average * 2) {
-      recommendations.push('Peak energy usage is significantly high - identify and manage energy-intensive appliances');
-      recommendations.push('Use energy monitoring to track which devices cause consumption spikes');
-    }
-    
-    // Period-specific recommendations
+    const { labels, data, average, peak, low, total } = chartData;
+    const recs: string[] = [];
+
+    // Helper: instantaneous delta for Realtime (currentTotal - previousTotal)
+    const getRealtimeInstant = (): number => {
+      const currentTotal = Object.values(sensors).reduce((sum, s) => sum + (s.energy || 0), 0);
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const { delta } = peakTrackerService.updateAndGet('recs', todayKey, currentTotal);
+      return Math.max(0, delta);
+    };
+
     switch (period) {
-      case 'Daily':
-        if (chartData.data.slice(18, 22).some(val => val > average * 1.3)) {
-          recommendations.push('Evening consumption is high - consider reducing lighting and entertainment device usage');
+      case 'Realtime': {
+        const instant = getRealtimeInstant();
+        // Compare instantaneous rate vs recent average of the chart
+        if (average > 0 && instant > average * 1.2) {
+          recs.push('Power use is higher than usual. Wait to run non‑essential appliances.');
+        } else if (average > 0 && instant < average * 0.6) {
+          recs.push('Power use is low. This is a good time to run heavy appliances.');
         }
+        // Peak proximity
+        if (peak > 0 && instant >= peak * 0.9) {
+          recs.push('You’re close to today’s highest use. Don’t start more appliances now.');
+        }
+        // Stability guidance
+        const variability = average > 0 ? (peak - low) / average : 0;
+        if (variability > 0.6) recs.push('Avoid turning on many appliances at once.');
         break;
-      case 'Weekly':
-        const weekendAvg = (chartData.data[5] + chartData.data[6]) / 2;
-        const weekdayAvg = chartData.data.slice(0, 5).reduce((a, b) => a + b, 0) / 5;
-        if (weekendAvg > weekdayAvg * 1.2) {
-          recommendations.push('Weekend consumption is notably higher - be mindful of increased home activity energy usage');
+      }
+
+      case 'Daily': {
+        // Identify peak hour and suggest shifting
+        const peakIdx = data.indexOf(peak);
+        const peakHour = peakIdx >= 0 && labels[peakIdx] ? labels[peakIdx] : 'peak hour';
+        if (peak > average * 1.3) {
+          recs.push(`Try not to run extra appliances around ${peakHour}.`);
         }
+        // Nighttime baseline (00:00–05:00) high implies standby/leakage
+        const nightIndices = labels.map((l, i) => (/^([0-1]?\d):00$/.test(l) ? Number(l.split(':')[0]) : NaN)).map((h, i) => (h >= 0 && h <= 5 ? i : -1)).filter(i => i >= 0);
+        if (nightIndices.length) {
+          const nightAvg = nightIndices.reduce((s, i) => s + (data[i] || 0), 0) / nightIndices.length;
+          if (nightAvg > average * 0.7) recs.push('At night, unplug chargers and turn off always‑on devices.');
+        }
+        // Low periods suggestion
+        const minIdx = data.indexOf(low);
+        const lowHour = minIdx >= 0 && labels[minIdx] ? labels[minIdx] : 'low hour';
+        recs.push(`Run heavy appliances around ${lowHour} when usage is lowest.`);
+        break;
+      }
+
+      case 'Weekly': {
+        // Peak day vs average day
+        const peakIdx = data.indexOf(peak);
+        const peakDay = peakIdx >= 0 && labels[peakIdx] ? labels[peakIdx] : 'peak day';
+        if (peak > average * 1.3) recs.push(`Spread heavy tasks across the week, not all on ${peakDay}.`);
+
+        // Weekend vs weekday balancing hint if labels contain day names
+        const dayName = (lbl: string) => lbl?.toLowerCase?.() || '';
+        const weekendIdx = labels.map((l, i) => (/sat|sun/.test(dayName(l)) ? i : -1)).filter(i => i >= 0);
+        if (weekendIdx.length) {
+          const weekendAvg = weekendIdx.reduce((s, i) => s + (data[i] || 0), 0) / weekendIdx.length;
+          if (weekendAvg > average * 1.1) recs.push('Weekends use more power. Do some chores on weekdays if you can.');
+        }
+        // Consistency guidance
+        const variability = average > 0 ? (Math.max(...data) - Math.min(...data)) / average : 0;
+        if (variability > 0.6) recs.push('Plan big tasks on different days to keep usage steady.');
+        break;
+      }
+
+      case 'Monthly': {
+        // Peak week suggestion (labels may be day numbers; use peak index meaningfully if week labels provided)
+        const peakIdx = data.indexOf(peak);
+        const peakLabel = peakIdx >= 0 && labels[peakIdx] ? labels[peakIdx] : 'peak week';
+        if (peak > average * 1.2) recs.push(`Avoid extra use around ${peakLabel}. Spread it out.`);
+
+        // Mid-month check and budgeting hint
+        if (total > 0 && average > 0) {
+          recs.push('Set a monthly power budget and check progress each week.');
+        }
+        // Identify lowest period to schedule heavy tasks
+        const minIdx = data.indexOf(low);
+        const lowLabel = minIdx >= 0 && labels[minIdx] ? labels[minIdx] : 'low period';
+        recs.push(`Do power‑hungry tasks near ${lowLabel} when usage is lowest.`);
+        break;
+      }
+
+      default:
         break;
     }
-    
+
+    // Fallback suggestions if few were generated
+    if (recs.length === 0) {
+      recs.push('Your energy use looks good. Keep it up.');
+      recs.push('Use timers or schedules so heavy appliances don’t overlap.');
+    }
+
     // Efficiency-based recommendations
     const efficiency = this.calculateEfficiencyRating(chartData);
     if (efficiency.rating === 'C' || efficiency.rating === 'D') {
-      recommendations.push('Consider an energy audit to identify inefficient appliances and systems');
-      recommendations.push('Implement smart home automation to optimize energy usage patterns');
+      if (recs.length < 4) recs.push('Consider an energy checkup to find waste.');
+      if (recs.length < 4) recs.push('Use smart plugs or schedules to cut waste.');
     }
-    
-    // Default recommendations if none specific
-    if (recommendations.length === 0) {
-      recommendations.push('Your energy usage is well-managed - maintain current consumption patterns');
-      recommendations.push('Consider renewable energy options to further reduce your carbon footprint');
-      recommendations.push('Regular monitoring helps maintain optimal energy efficiency');
-    }
-    
-    return recommendations.slice(0, 4); // Limit to 4 recommendations
+
+    return recs.slice(0, 4); // Limit to 4 recommendations
   }
 
   static formatConsumptionValue(value: number, period: TimePeriod): string {
