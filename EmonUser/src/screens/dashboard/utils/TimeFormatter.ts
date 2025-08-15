@@ -58,6 +58,26 @@ export class TimeFormatter {
     return `${TimeFormatter.formatDate()} • ${TimeFormatter.formatTime()}`;
   }
 
+  // New: format a provided Date using preferred timezone
+  static formatDateTimeFor(date: Date): string {
+    const timeZone = this.getTimeZone();
+    const dateStr = date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone,
+    });
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour12: true,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZone,
+    });
+    return `${dateStr} • ${timeStr}`;
+  }
+
   static formatShortTime(): string {
     const now = new Date();
     const timeZone = this.getTimeZone();
@@ -77,6 +97,14 @@ export class TimeFormatter {
       day: 'numeric',
       timeZone,
     });
+  }
+
+  // New: compact date-time for lists
+  static formatShortDateTimeFor(date: Date): string {
+    const timeZone = this.getTimeZone();
+    const d = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone });
+    const t = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone });
+    return `${d} • ${t}`;
   }
 
   static getGreeting(): string {

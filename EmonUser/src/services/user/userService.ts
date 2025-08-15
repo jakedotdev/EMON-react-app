@@ -7,6 +7,7 @@ export interface UserProfile {
   phone: string;
   address: string;
   profileImage?: string;
+  preferredTimezone?: string;
   preferences: {
     notifications: boolean;
     energyAlerts: boolean;
@@ -35,6 +36,7 @@ class UserService {
            phone: data.phone || '',
            address: data.address || '',
            profileImage: data.profileImage || '',
+           preferredTimezone: data.preferredTimezone || 'Asia/Manila',
            preferences: {
              notifications: data.preferences?.notifications ?? true,
              energyAlerts: data.preferences?.energyAlerts ?? true,

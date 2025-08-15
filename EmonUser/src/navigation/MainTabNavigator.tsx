@@ -1,11 +1,11 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet } from 'react-native';
-import DashboardScreen from '../screens/dashboard/DashboardScreenRefactored';
+import DashboardStackNavigator from './DashboardStackNavigator';
 import AppliancesScreen from '../screens/appliances/AppliancesScreen';
 import AnalyticsScreenRefactored from '../screens/analytics/AnalyticsScreenRefactored';
 import ProfileScreen from '../screens/profile/ProfileScreen';
-import SettingsScreen from '../screens/settings/SettingsScreen';
+import SettingsStackNavigator from './SettingsStackNavigator';
 
 const Tab = createBottomTabNavigator();
 
@@ -29,7 +29,7 @@ const MainTabNavigator = () => (
   >
     <Tab.Screen 
       name="Dashboard" 
-      component={DashboardScreen}
+      component={DashboardStackNavigator}
       options={{
         tabBarIcon: ({ focused }) => <TabIcon name="Dashboard" focused={focused} />,
       }}
@@ -57,7 +57,7 @@ const MainTabNavigator = () => (
     />
     <Tab.Screen 
       name="Settings" 
-      component={SettingsScreen}
+      component={SettingsStackNavigator}
       options={{
         tabBarIcon: ({ focused }) => <TabIcon name="Settings" focused={focused} />,
       }}

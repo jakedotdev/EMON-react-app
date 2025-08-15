@@ -26,6 +26,10 @@ import { NavigationHelper } from './utils/NavigationHelper';
 
 // Services and Models
 import { SensorReadingModel } from '../../models/SensorReading';
+import { firestore } from '../../services/firebase/firebaseConfig';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { notificationsService } from '../../services/notifications/notificationsService';
 
 // Types - EnergyTotals is now imported from EnergyCalculator
 
@@ -126,6 +130,156 @@ const DashboardScreen: React.FC = () => {
     }
   }, [sensors, userAppliances, handleDataUpdate]);
 
+  // Load persisted gauge settings when user is available
+  useEffect(() => {
+    const loadGaugeSettings = async () => {
+      try {
+        const uid = currentUser?.uid;
+        if (!uid) return;
+        const ref = doc(firestore, 'users', uid);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data: any = snap.data();
+          const saved = data?.dashboardGauge;
+          if (saved && Number.isFinite(saved.maxValue) && [1, 2, 3, 5].includes(saved.divisor)) {
+            gaugeManager.updateSettings(
+              Math.max(1, Math.min(50, Number(saved.maxValue))),
+              saved.divisor
+            );
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load gauge settings from Firestore:', e);
+      }
+    };
+    loadGaugeSettings();
+    // Intentionally exclude gaugeManager from deps to avoid re-running unnecessarily
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser]);
+
+  // Trigger notification if total energy exceeds gauge max
+  useEffect(() => {
+    const maybeNotify = async () => {
+      try {
+        const uid = getAuth().currentUser?.uid;
+        if (!uid) return;
+        const max = gaugeManager.getSettings().maxValue;
+        const total = energyTotals.totalEnergy || 0;
+        if (total > max) {
+          const key = 'gauge_exceed';
+          const already = await notificationsService.hasSimilarToday(uid, 'GAUGE_LIMIT', key);
+          if (!already) {
+            await notificationsService.add(uid, {
+              type: 'GAUGE_LIMIT',
+              title: 'Total energy exceeded gauge limit',
+              body: `Your total energy (${total.toFixed(2)} kWh) exceeded the gauge max (${max} kWh).`,
+              createdAt: new Date(),
+              read: false,
+              meta: { key, total, max }
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to create gauge exceed notification:', e);
+      }
+    };
+    maybeNotify();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [energyTotals.totalEnergy]);
+
+  // Helper to derive sensorId from device serial (mirrors AppliancesDataManager logic)
+  const getSensorIdFromSerialNumber = (serialNumber: string): string => {
+    if (!serialNumber) return '1';
+    const currentPattern = serialNumber.match(/^11032(\d{2})(\d)$/);
+    if (currentPattern) return currentPattern[2];
+    const lastDigitMatch = serialNumber.match(/(\d+)$/);
+    if (lastDigitMatch) {
+      const lastDigits = lastDigitMatch[1];
+      return lastDigits.length > 2 ? lastDigits.slice(-1) : lastDigits;
+    }
+    const hash = serialNumber.split('').reduce((acc, char) => ((acc << 5) - acc + char.charCodeAt(0)) & 0xffffffff, 0);
+    const sensorId = (Math.abs(hash) % 100 + 1).toString();
+    return sensorId;
+  };
+
+  // Trigger notifications for appliances exceeding their Max kWh / Runtime
+  useEffect(() => {
+    const checkApplianceLimits = async () => {
+      try {
+        const uid = getAuth().currentUser?.uid;
+        if (!uid) return;
+        if (!userAppliances?.length || !userDevices?.length) return;
+
+        // Map deviceId -> device
+        const deviceById: Record<string, any> = {};
+        userDevices.forEach((d: any) => { deviceById[d.id] = d; });
+
+        for (const appliance of userAppliances) {
+          const device = deviceById[appliance.deviceId];
+          const serial = device?.serialNumber || '';
+          const sensorId = getSensorIdFromSerialNumber(serial);
+          const sensorKey = `SensorReadings_${sensorId}`; // keys are normalized by sensorService
+          const sensor = (sensors as any)?.[sensorKey] as SensorReadingModel | undefined;
+          if (!sensor) continue;
+
+          // Respect appliance notification toggle when provided
+          if (appliance.notificationsEnabled === false) continue;
+
+          // Check kWh limit
+          if (typeof appliance.maxKWh === 'number' && appliance.maxKWh > 0) {
+            const totalKWh = Number(sensor.energy || 0);
+            if (totalKWh > appliance.maxKWh) {
+              const key = `kwh_${appliance.id}`;
+              const already = await notificationsService.hasSimilarToday(uid, 'APPLIANCE_LIMIT', key);
+              if (!already) {
+                await notificationsService.add(uid, {
+                  type: 'APPLIANCE_LIMIT',
+                  title: `${appliance.name} exceeded Max kWh`,
+                  body: `${appliance.name} used ${totalKWh.toFixed(2)} kWh (limit ${appliance.maxKWh} kWh).`,
+                  createdAt: new Date(),
+                  read: false,
+                  meta: { key, applianceId: appliance.id, serial, totalKWh, limit: appliance.maxKWh }
+                });
+              }
+            }
+          }
+
+          // Check runtime limit
+          if (appliance.maxRuntime?.value && appliance.maxRuntime?.unit) {
+            const toSeconds = (v: number, u: string) => {
+              switch (u) {
+                case 'hours': return v * 3600;
+                case 'minutes': return v * 60;
+                case 'seconds': return v;
+                default: return v;
+              }
+            };
+            const limitSec = toSeconds(Number(appliance.maxRuntime.value), String(appliance.maxRuntime.unit));
+            const runtimeSec = Number((sensor.runtimehr || 0) * 3600 + (sensor.runtimemin || 0) * 60 + (sensor.runtimesec || 0));
+            if (limitSec > 0 && runtimeSec > limitSec) {
+              const key = `runtime_${appliance.id}`;
+              const already = await notificationsService.hasSimilarToday(uid, 'APPLIANCE_LIMIT', key);
+              if (!already) {
+                await notificationsService.add(uid, {
+                  type: 'APPLIANCE_LIMIT',
+                  title: `${appliance.name} exceeded Max runtime`,
+                  body: `${appliance.name} ran ${Math.floor(runtimeSec/3600)}h ${Math.floor((runtimeSec%3600)/60)}m (limit ${appliance.maxRuntime.value} ${appliance.maxRuntime.unit}).`,
+                  createdAt: new Date(),
+                  read: false,
+                  meta: { key, applianceId: appliance.id, serial, runtimeSec, limitSec }
+                });
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to create appliance limit notifications:', e);
+      }
+    };
+    checkApplianceLimits();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sensors, userAppliances, userDevices]);
+
   // Safe focus effect with error handling
   useFocusEffect(
     React.useCallback(() => {
@@ -159,6 +313,19 @@ const DashboardScreen: React.FC = () => {
   const handleGaugeSettingsSave = (maxValue: number, divisor: number): void => {
     console.log(`Gauge settings saved: maxValue=${maxValue}, divisor=${divisor}`);
     gaugeManager.updateSettings(maxValue, divisor);
+    // Persist to Firestore for the current user
+    (async () => {
+      try {
+        const uid = (currentUser as any)?.uid;
+        if (!uid) return;
+        const ref = doc(firestore, 'users', uid);
+        await updateDoc(ref, {
+          dashboardGauge: { maxValue: Math.max(1, Math.min(50, maxValue)), divisor }
+        });
+      } catch (e) {
+        console.warn('Failed to save gauge settings to Firestore:', e);
+      }
+    })();
     setShowGaugeSettings(false);
   };
 

@@ -1,19 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Switch,
-  Alert,
-} from 'react-native';
-import { getAuth } from 'firebase/auth';
-import { authService } from '../../services/auth/authService';
-import TimezonePicker from '../auth/components/TimezonePicker';
-import { TimeFormatter } from '../dashboard/utils/TimeFormatter';
+import { View, Text, ScrollView, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
+import type { SettingsStackParamList } from '../../navigation/SettingsStackNavigator';
+// Removed direct auth and profile service usage in favor of SettingsDataManager
+import { settingsDataManager } from './managers/SettingsDataManager';
+import { settingsStyles } from './styles';
+import TimeSection from './components/TimeSection';
+import NotificationsSection from './components/NotificationsSection';
+import AppInfoSection from './components/AppInfoSection';
+import SupportSection from './components/SupportSection';
 
 const SettingsScreen: React.FC = () => {
+  const navigation = useNavigation<StackNavigationProp<SettingsStackParamList>>();
   const [settings, setSettings] = useState({
     notifications: {
       pushNotifications: true,
@@ -44,45 +43,22 @@ const SettingsScreen: React.FC = () => {
 
   useEffect(() => {
     const loadTimezone = async () => {
-      try {
-        const auth = getAuth();
-        const user = auth.currentUser;
-        if (!user) return;
-        const profile = await authService.getUserProfile(user.uid);
-        const tz = profile?.preferredTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-        setPreferredTimezone(tz);
-        TimeFormatter.setTimeZone(tz);
-      } catch (e) {
-        try {
-          const fallback = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-          setPreferredTimezone(fallback);
-          TimeFormatter.setTimeZone(fallback);
-        } catch {
-          setPreferredTimezone('UTC');
-          TimeFormatter.setTimeZone('UTC');
-        }
-      }
+      const tz = await settingsDataManager.loadPreferredTimezone();
+      setPreferredTimezone(tz);
     };
     loadTimezone();
   }, []);
 
   const handleTimezoneChange = async (tz: string) => {
-    // Validate tz
-    try {
-      new Intl.DateTimeFormat('en-US', { timeZone: tz }).format(new Date());
-    } catch {
+    if (!settingsDataManager.validateTimezone(tz)) {
       Alert.alert('Invalid timezone', 'Please select a valid IANA timezone.');
       return;
     }
     setPreferredTimezone(tz);
-    TimeFormatter.setTimeZone(tz);
+    settingsDataManager.applyTimeZone(tz);
     try {
       setSavingTimezone(true);
-      const auth = getAuth();
-      const user = auth.currentUser;
-      if (user) {
-        await authService.updateUserProfile(user.uid, { preferredTimezone: tz });
-      }
+      await settingsDataManager.savePreferredTimezone(tz);
     } catch (e) {
       Alert.alert('Error', 'Failed to save timezone. It will still apply locally.');
     } finally {
@@ -161,237 +137,28 @@ const SettingsScreen: React.FC = () => {
     }));
   };
 
-  const renderSettingItem = (
-    label: string,
-    value: boolean | string,
-    onPress?: () => void,
-    isToggle: boolean = true
-  ) => (
-    <TouchableOpacity
-      style={styles.settingItem}
-      onPress={onPress}
-      disabled={!onPress}
-    >
-      <Text style={styles.settingLabel}>{label}</Text>
-      {isToggle ? (
-        <Switch
-          value={value as boolean}
-          onValueChange={(newValue) => {
-            // Find the category and setting name
-            Object.keys(settings).forEach(category => {
-              const categorySettings = settings[category as keyof typeof settings];
-              if (typeof categorySettings === 'object' && categorySettings !== null) {
-                Object.keys(categorySettings).forEach(setting => {
-                  if (categorySettings[setting as keyof typeof categorySettings] === value) {
-                    handleToggleSetting(category, setting, newValue);
-                  }
-                });
-              }
-            });
-          }}
-          trackColor={{ false: '#D3E6BF', true: '#5B934E' }}
-          thumbColor={value ? '#FFFFFF' : '#467933'}
-        />
-      ) : (
-        <View style={styles.settingValue}>
-          <Text style={styles.settingValueText}>{value}</Text>
-          {onPress && <Text style={styles.settingArrow}>›</Text>}
-  </View>
-      )}
-    </TouchableOpacity>
-  );
+  // Section components handle rendering of individual rows
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Settings</Text>
-      </View>
+    <ScrollView style={settingsStyles.container}>
 
-      {/* Timezone */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Time</Text>
-        <TimezonePicker value={preferredTimezone} onChange={handleTimezoneChange} />
-        {savingTimezone ? (
-          <Text style={{ color: '#6B7280', marginTop: 6 }}>Saving timezone…</Text>
-        ) : (
-          <Text style={{ color: '#6B7280', marginTop: 6 }}>Used for accurate time displays and analytics.</Text>
-        )}
-      </View>
+      <TimeSection value={preferredTimezone} saving={savingTimezone} onChange={handleTimezoneChange} />
 
-      {/* Notifications */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Notifications</Text>
-        {renderSettingItem('Push Notifications', settings.notifications.pushNotifications)}
-        {renderSettingItem('Email Notifications', settings.notifications.emailNotifications)}
-        {renderSettingItem('Energy Alerts', settings.notifications.energyAlerts)}
-        {renderSettingItem('Device Alerts', settings.notifications.deviceAlerts)}
-        {renderSettingItem('Weekly Reports', settings.notifications.weeklyReports)}
-      </View>
+      <NotificationsSection
+        pushNotifications={settings.notifications.pushNotifications}
+        onToggle={(v: boolean) => handleToggleSetting('notifications', 'pushNotifications', v)}
+      />
 
-      {/* Display */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Display</Text>
-        {renderSettingItem('Dark Mode', settings.display.darkMode)}
-        {renderSettingItem('Compact Mode', settings.display.compactMode)}
-        {renderSettingItem('Show Animations', settings.display.showAnimations)}
-      </View>
+      <AppInfoSection version="1.0.0" build="2024.01.01" developer="EMON Team" />
 
-      {/* Data Management */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Data Management</Text>
-        {renderSettingItem('Auto Sync', settings.data.autoSync)}
-        {renderSettingItem('Data Retention', settings.data.dataRetention, handleDataRetentionChange, false)}
-        {renderSettingItem('Export Format', settings.data.exportFormat, handleExportFormatChange, false)}
-      </View>
-
-      {/* Security */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Security</Text>
-        {renderSettingItem('Biometric Authentication', settings.security.biometricAuth)}
-        {renderSettingItem('Auto Lock', settings.security.autoLock)}
-        {renderSettingItem('Session Timeout', settings.security.sessionTimeout, handleSessionTimeoutChange, false)}
-      </View>
-
-      {/* App Information */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>App Information</Text>
-        <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>Version</Text>
-          <Text style={styles.infoValue}>1.0.0</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>Build</Text>
-          <Text style={styles.infoValue}>2024.01.01</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>Developer</Text>
-          <Text style={styles.infoValue}>EMON Team</Text>
-        </View>
-      </View>
-
-      {/* Actions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Actions</Text>
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Export Data</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Clear Cache</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Reset Settings</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>About</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Support */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Support</Text>
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Help & FAQ</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Contact Support</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Privacy Policy</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Terms of Service</Text>
-        </TouchableOpacity>
-      </View>
+      <SupportSection
+        onAbout={() => navigation.navigate('About')}
+        onHelp={() => navigation.navigate('HelpFAQ')}
+        onContact={() => navigation.navigate('ContactSupport')}
+        onPrivacy={() => navigation.navigate('PrivacyPolicy')}
+        onTerms={() => navigation.navigate('TermsOfService')}
+      />
     </ScrollView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#5B934E',
-  },
-
-  section: {
-    backgroundColor: '#FFFFFF',
-    margin: 20,
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#5B934E',
-    marginBottom: 15,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  settingLabel: {
-    fontSize: 16,
-    color: '#333',
-    flex: 1,
-  },
-  settingValue: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  settingValueText: {
-    fontSize: 16,
-    color: '#666',
-    marginRight: 10,
-  },
-  settingArrow: {
-    fontSize: 18,
-    color: '#5B934E',
-  },
-  infoItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  infoLabel: {
-    fontSize: 16,
-    color: '#333',
-  },
-  infoValue: {
-    fontSize: 16,
-    color: '#666',
-  },
-  actionButton: {
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  actionButtonText: {
-    fontSize: 16,
-    color: '#5B934E',
-  },
-});
-
 export default SettingsScreen;

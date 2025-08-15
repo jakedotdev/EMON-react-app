@@ -13,18 +13,17 @@ import {
   Platform,
 } from 'react-native';
 import { launchImageLibrary, launchCamera, ImagePickerResponse, MediaType } from 'react-native-image-picker';
-import { authService } from '../../services/auth/authService';
-import { adminService } from '../../services/admin/adminService';
-import { userService, UserProfile as UserProfileType } from '../../services/user/userService';
-import { deviceService } from '../../services/devices/deviceService';
-import { storageService } from '../../services/storage/storageService';
-import { getAuth, updateProfile } from 'firebase/auth';
+import { useNavigation } from '@react-navigation/native';
+import type { UserProfile as UserProfileType } from '../../services/user/userService';
+import { getAuth } from 'firebase/auth';
+import { profileDataManager } from './managers/ProfileDataManager';
 
 type UserProfile = UserProfileType;
 
 const ProfileScreen: React.FC = () => {
   const auth = getAuth();
   const currentUser = auth.currentUser;
+  const navigation = useNavigation<any>();
   
   const [profile, setProfile] = useState<UserProfile>({
     id: currentUser?.uid || '',
@@ -33,6 +32,7 @@ const ProfileScreen: React.FC = () => {
     phone: '',
     address: '',
     profileImage: '',
+    preferredTimezone: 'Asia/Manila',
     preferences: {
       notifications: true,
       energyAlerts: true,
@@ -42,45 +42,18 @@ const ProfileScreen: React.FC = () => {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState<UserProfile>(profile);
-  const [userDevices, setUserDevices] = useState<any[]>([]);
-  const [loadingDevices, setLoadingDevices] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
       loadUserProfile();
-      loadUserDevices();
     }
   }, [currentUser]);
 
   const loadUserProfile = async () => {
     if (!currentUser) return;
-    
     try {
-      // Try to get existing profile from Firestore
-      let userProfile = await userService.getUserProfile(currentUser.uid);
-      
-      if (!userProfile) {
-        // Create new profile with Firebase Auth data
-        userProfile = {
-          id: currentUser.uid,
-          fullName: currentUser.displayName || 'User',
-          email: currentUser.email || '',
-          phone: '',
-          address: '',
-          profileImage: '',
-          preferences: {
-            notifications: true,
-            energyAlerts: true,
-            darkMode: false,
-            language: 'English',
-          },
-        };
-        
-        // Save to Firestore
-        await userService.createUserProfile(currentUser.uid, userProfile);
-      }
-      
+      const userProfile = await profileDataManager.loadProfile();
       setProfile(userProfile);
       setEditedProfile(userProfile);
     } catch (error) {
@@ -89,33 +62,14 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
-  const loadUserDevices = async () => {
-    if (!currentUser) return;
-    
-    setLoadingDevices(true);
-    try {
-      const devices = await deviceService.getUserDevices(currentUser.uid);
-      setUserDevices(devices);
-    } catch (error) {
-      console.error('Error loading user devices:', error);
-    } finally {
-      setLoadingDevices(false);
-    }
-  };
+  // Removed device loading; not part of Profile screen responsibilities
 
   const handleSaveProfile = async () => {
     if (!currentUser) return;
     
     try {
-      // Update Firebase Auth display name if it changed
-      if (editedProfile.fullName !== currentUser.displayName) {
-        await updateProfile(currentUser, {
-          displayName: editedProfile.fullName
-        });
-      }
-      
-      // Save profile data to Firestore
-      await userService.updateUserProfile(currentUser.uid, editedProfile);
+      // Persist via manager (includes updating Firebase Auth display name)
+      await profileDataManager.saveProfile(editedProfile);
       
       setProfile(editedProfile);
       setIsEditing(false);
@@ -220,17 +174,16 @@ const ProfileScreen: React.FC = () => {
 
     setUploadingImage(true);
     try {
-      // Upload image to Firebase Storage
-      const downloadURL = await storageService.uploadProfileImage(currentUser.uid, imageUri);
-
-      // Update profile with new image URL
-      const updatedProfile = { ...editedProfile, profileImage: downloadURL };
-      setEditedProfile(updatedProfile);
-
-      // If not in editing mode, save immediately
-      if (!isEditing) {
-        await userService.updateUserProfile(currentUser.uid, updatedProfile);
-        setProfile(updatedProfile);
+      if (isEditing) {
+        // Upload but do not persist until Save
+        const downloadURL = await profileDataManager.uploadProfileImageDryRun(imageUri);
+        const updatedProfile = { ...editedProfile, profileImage: downloadURL } as UserProfile;
+        setEditedProfile(updatedProfile);
+      } else {
+        // Upload and persist immediately
+        const updated = await profileDataManager.uploadProfileImage(imageUri, profile);
+        setProfile(updated);
+        setEditedProfile(updated);
         Alert.alert('Success', 'Profile photo updated successfully');
       }
     } catch (error) {
@@ -255,17 +208,14 @@ const ProfileScreen: React.FC = () => {
           onPress: async () => {
             setUploadingImage(true);
             try {
-              // Delete image from Firebase Storage
-              await storageService.deleteProfileImage(currentUser.uid);
-
-              // Update profile to remove image URL
-              const updatedProfile = { ...editedProfile, profileImage: '' };
-              setEditedProfile(updatedProfile);
-
-              // If not in editing mode, save immediately
-              if (!isEditing) {
-                await userService.updateUserProfile(currentUser.uid, updatedProfile);
-                setProfile(updatedProfile);
+              if (isEditing) {
+                // Only update local edit state
+                const updatedProfile = { ...editedProfile, profileImage: '' } as UserProfile;
+                setEditedProfile(updatedProfile);
+              } else {
+                const updated = await profileDataManager.removeProfileImage(profile);
+                setProfile(updated);
+                setEditedProfile(updated);
                 Alert.alert('Success', 'Profile photo removed successfully');
               }
             } catch (error) {
@@ -291,7 +241,7 @@ const ProfileScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await authService.signOut();
+              await profileDataManager.signOut();
             } catch (error) {
               Alert.alert('Error', 'Failed to sign out');
             }
@@ -356,14 +306,6 @@ const ProfileScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Profile</Text>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => setIsEditing(!isEditing)}
-        >
-          <Text style={styles.editButtonText}>
-            {isEditing ? 'Cancel' : 'Edit'}
-          </Text>
-        </TouchableOpacity>
       </View>
 
       {/* Profile Picture Section */}
@@ -412,86 +354,24 @@ const ProfileScreen: React.FC = () => {
         {renderProfileField('Email', profile.email, 'email', false)}
         {renderProfileField('Phone', profile.phone, 'phone')}
         {renderProfileField('Address', profile.address, 'address')}
+        <TouchableOpacity
+          accessibilityRole="button"
+          style={[styles.input, { justifyContent: 'center' }]}
+          onPress={() => {
+            // Navigate to Settings screen's Time section
+            // Adjust route names if different in your navigator
+            navigation.navigate('Settings', { screen: 'Time' });
+          }}
+        >
+          <Text style={{ color: '#333', fontSize: 16 }}>
+            Preferred Timezone: {profile.preferredTimezone || 'Asia/Manila'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Preferences */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Preferences</Text>
-        {renderPreferenceToggle('Push Notifications', profile.preferences.notifications, 'notifications')}
-        {renderPreferenceToggle('Energy Alerts', profile.preferences.energyAlerts, 'energyAlerts')}
-        {renderPreferenceToggle('Dark Mode', profile.preferences.darkMode, 'darkMode')}
-      </View>
+      {/* Preferences removed as requested */}
 
-                        {/* Account Actions */}
-                  <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Account</Text>
-                    <TouchableOpacity style={styles.actionButton}>
-                      <Text style={styles.actionButtonText}>Change Password</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton}>
-                      <Text style={styles.actionButtonText}>Privacy Settings</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton}>
-                      <Text style={styles.actionButtonText}>Data Export</Text>
-                    </TouchableOpacity>
-
-                    
-                    <TouchableOpacity 
-                      style={[styles.actionButton, { backgroundColor: '#FF9800' }]}
-                      onPress={async () => {
-                        try {
-                          if (currentUser) {
-                            await adminService.updateAllDevicesToCurrentUser(currentUser.uid);
-                            Alert.alert('Success', 'All existing devices updated to current user!');
-                          }
-                        } catch (error) {
-                          Alert.alert('Error', 'Failed to update devices');
-                        }
-                      }}
-                    >
-                      <Text style={styles.actionButtonText}>Update Existing Devices to Current User</Text>
-                    </TouchableOpacity>
-
-                    {/* Development Helper - Activate Devices */}
-                    <TouchableOpacity 
-                      style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
-                      onPress={async () => {
-                        try {
-                          if (currentUser) {
-                            await adminService.activateDevelopmentDevices(currentUser.uid);
-                            Alert.alert('Success', 'Development devices activated! You can now register appliances.');
-                            loadUserDevices(); // Reload devices after activation
-                          }
-                        } catch (error) {
-                          Alert.alert('Error', 'Failed to activate development devices');
-                        }
-                      }}
-                    >
-                      <Text style={styles.actionButtonText}>Activate Development Devices</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Development - User's Activated Devices */}
-                  <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>My Activated Devices</Text>
-                    {loadingDevices ? (
-                      <Text style={styles.loadingText}>Loading devices...</Text>
-                    ) : userDevices.length > 0 ? (
-                      userDevices.map((device, index) => (
-                        <View key={device.id} style={styles.deviceItem}>
-                          <Text style={styles.deviceName}>{device.name}</Text>
-                          <Text style={styles.deviceSerial}>Serial: {device.serialNumber}</Text>
-                          <Text style={styles.deviceStatus}>
-                            Status: {device.isConnected ? 'Connected' : 'Disconnected'}
-                          </Text>
-                        </View>
-                      ))
-                    ) : (
-                      <Text style={styles.noDevicesText}>
-                        No devices activated. Use "Activate Development Devices" to activate devices for testing.
-                      </Text>
-                    )}
-                  </View>
+                        {/* Removed Account/Admin/Device sections to keep Profile focused */}
 
       {/* Save/Cancel Buttons */}
       {isEditing && (
@@ -684,12 +564,9 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   actionButtonText: {
     fontSize: 16,
-    color: '#5B934E',
   },
   editButtons: {
     flexDirection: 'row',
@@ -731,42 +608,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
-  loadingText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  deviceItem: {
-    backgroundColor: '#F8F9FA',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 10,
-    borderLeftWidth: 4,
-    borderLeftColor: '#5B934E',
-  },
-  deviceName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  deviceSerial: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 3,
-  },
-  deviceStatus: {
-    fontSize: 14,
-    color: '#5B934E',
-    fontWeight: '500',
-  },
-  noDevicesText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
+  
 });
 
 export default ProfileScreen;

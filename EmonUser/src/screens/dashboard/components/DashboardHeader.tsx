@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { TimeFormatter } from '../utils/TimeFormatter';
 
 interface DashboardHeaderProps {
@@ -7,6 +8,7 @@ interface DashboardHeaderProps {
 }
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ currentUser }) => {
+  const navigation = useNavigation<any>();
   const [currentTime, setCurrentTime] = useState('');
   const [currentDate, setCurrentDate] = useState('');
 
@@ -86,7 +88,16 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ currentUser }) => {
           </View>
           
           {/* Notification Bell */}
-          <TouchableOpacity style={styles.notificationButton}>
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={() => {
+              try {
+                navigation.navigate('Notifications');
+              } catch (e) {
+                console.warn('Navigation to Notifications failed:', e);
+              }
+            }}
+          >
             <Text style={styles.notificationIcon}>🔔</Text>
             <View style={styles.notificationBadge}>
               <Text style={styles.badgeText}>3</Text>
