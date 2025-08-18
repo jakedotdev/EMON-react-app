@@ -100,6 +100,38 @@ const AppliancesScreen: React.FC = () => {
           scrollToAppliance(params.focusedApplianceId);
         }, 500);
 
+        // If this came from a notification, check if the triggering condition has been resolved
+        if (params.fromNotification) {
+          setTimeout(() => {
+            try {
+              const app = appliances.find(a => a.id === params.focusedApplianceId);
+              if (!app) {
+                Alert.alert('Notification info', 'This appliance is no longer available. It may have been removed.');
+                return;
+              }
+              const data = sensorData[app.deviceSerialNumber || ''];
+              const energy = Number(data?.energy || 0);
+              const runtimeSec = Number((data?.runtimehr || 0) * 3600 + (data?.runtimemin || 0) * 60 + (data?.runtimesec || 0));
+
+              let overKwh = false;
+              if (typeof app.maxKWh === 'number' && app.maxKWh > 0) {
+                overKwh = energy > app.maxKWh;
+              }
+
+              let overRuntime = false;
+              if (app.maxRuntime?.value && app.maxRuntime?.unit) {
+                const toSeconds = (v: number, u: string) => u === 'hours' ? v * 3600 : u === 'minutes' ? v * 60 : v;
+                const limitSec = toSeconds(Number(app.maxRuntime.value), String(app.maxRuntime.unit));
+                if (limitSec > 0) overRuntime = runtimeSec > limitSec;
+              }
+
+              if (!overKwh && !overRuntime) {
+                Alert.alert('Notification resolved', 'Current usage is within set limits.');
+              }
+            } catch {}
+          }, 600);
+        }
+
         // Clear highlight after 3 seconds
         setTimeout(() => {
           setHighlightedApplianceId(null);

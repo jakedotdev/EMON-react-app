@@ -10,7 +10,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
+  SafeAreaView,
+  useColorScheme,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { loginManager } from './managers/LoginManager';
 
 interface LoginScreenProps {
@@ -23,6 +27,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const passwordRef = useRef<TextInput>(null);
+
+  const isFormValid = email.trim().length > 0 && password.trim().length > 0;
 
   const handleLogin = async () => {
     const error = loginManager.validate({ email, password });
@@ -69,18 +75,53 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     );
   };
 
+  const colorScheme = useColorScheme?.() as 'light' | 'dark' | null;
+  const logoSource = (() => {
+    try {
+      if (colorScheme === 'dark') {
+        // If you add a dark-specific logo, uncomment below and provide the asset
+        // return require('../../assets/logo-dark.png');
+        return require('../../assets/logo-wobg.png');
+      }
+      // If you add a light-specific logo, uncomment below and provide the asset
+      // return require('../../assets/logo-light.png');
+      return require('../../assets/logo-wobg.png');
+    } catch {
+      return require('../../assets/logo-wobg.png');
+    }
+  })();
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Text style={styles.title}>EMON</Text>
-          <Text style={styles.subtitle}>Energy Monitoring System</Text>
+      <LinearGradient colors={["#5B934E", "#1F6F43"]} style={styles.gradient}>
+        <SafeAreaView>
+        <View style={styles.headerSticky}>
+          <View style={styles.headerBrand}>
+            <View style={styles.logoCircle}>
+              <Image
+                source={logoSource}
+                style={styles.logoImage}
+                accessibilityLabel="EMON Logo"
+                resizeMode="contain"
+              />
+            </View>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={styles.appName} accessibilityRole="header">EMON</Text>
+              <Text style={styles.headerSubtitle}>Your Energy Monitoring Companion</Text>
+            </View>
+          </View>
         </View>
-
-        <View style={styles.form}>
+        </SafeAreaView>
+        <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+          <View style={styles.form}>
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>Welcome back!</Text>
+              <Text style={styles.subtitle}>Track your energy consumption now!</Text>
+            </View>
+            <View style={styles.separator} />
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Email</Text>
             <TextInput
@@ -108,7 +149,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 returnKeyType="done"
-                onSubmitEditing={handleLogin}
+                onSubmitEditing={() => { if (isFormValid) handleLogin(); }}
               />
               <TouchableOpacity
                 accessibilityRole="button"
@@ -129,9 +170,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+            style={[
+              styles.loginButton,
+              (loading || !isFormValid) && styles.loginButtonDisabled,
+            ]}
             onPress={handleLogin}
-            disabled={loading}
+            disabled={loading || !isFormValid}
             activeOpacity={0.85}
           >
             {loading ? (
@@ -151,7 +195,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </LinearGradient>
     </KeyboardAvoidingView>
   );
 };
@@ -159,26 +204,78 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+  },
+  gradient: {
+    flex: 1,
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
+  headerSticky: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
-  title: {
+  headerBrand: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  logoCircle: {
+    marginTop: 30,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  logoImage: {
+    marginTop: 5,
+    width: 85,
+    height: 85,
+  },
+  appName: {
+    color: '#FFFFFF',
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#5B934E',
+    fontWeight: '800',
+  },
+  headerSubtitle: {
+    color: '#E5E7EB',
+    fontSize: 14,
+    marginTop: 2,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#CBD5E1',
+    marginVertical: 12,
+    alignSelf: 'stretch',
+    opacity: 1,
+  },
+  titleContainer: {
+    alignItems: 'flex-start',
     marginBottom: 8,
   },
+  // Removed old greetingTitle in favor of professional header
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#5B934E',
+    marginBottom: 4,
+  },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 14,
+    color: '#999999',
+    fontWeight: '600',
+    fontFamily: 'Poppins_400Regular',
+    fontStyle: 'italic',
     textAlign: 'center',
   },
   form: {
@@ -241,8 +338,8 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     backgroundColor: '#5B934E',
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: 24,
+    paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 20,
   },

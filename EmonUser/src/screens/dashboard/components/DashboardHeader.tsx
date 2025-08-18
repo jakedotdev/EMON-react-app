@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { TimeFormatter } from '../utils/TimeFormatter';
+import { notificationsService } from '../../../services/notifications/notificationsService';
 
 interface DashboardHeaderProps {
   currentUser: any;
@@ -11,6 +12,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ currentUser }) => {
   const navigation = useNavigation<any>();
   const [currentTime, setCurrentTime] = useState('');
   const [currentDate, setCurrentDate] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const updateTime = () => {
@@ -32,6 +34,27 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ currentUser }) => {
       unsubscribeTz();
     };
   }, []);
+
+  // Subscribe to notifications to compute unread count for the bell badge
+  useEffect(() => {
+    const uid = currentUser?.uid;
+    if (!uid) {
+      setUnreadCount(0);
+      return;
+    }
+    const unsub = notificationsService.subscribe(uid, (items) => {
+      try {
+        const count = items.reduce((acc, n) => acc + (n?.read ? 0 : 1), 0);
+        setUnreadCount(count);
+      } catch (e) {
+        // Fallback to 0 on any parsing error
+        setUnreadCount(0);
+      }
+    });
+    return () => {
+      try { unsub?.(); } catch {}
+    };
+  }, [currentUser?.uid]);
 
   const greeting = TimeFormatter.getGreeting();
   const timeOfDay = TimeFormatter.getTimeOfDay();
@@ -99,9 +122,11 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ currentUser }) => {
             }}
           >
             <Text style={styles.notificationIcon}>🔔</Text>
-            <View style={styles.notificationBadge}>
-              <Text style={styles.badgeText}>3</Text>
-            </View>
+            {unreadCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : String(unreadCount)}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
         

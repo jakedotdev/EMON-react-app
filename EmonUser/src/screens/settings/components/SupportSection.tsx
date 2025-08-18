@@ -13,7 +13,7 @@ interface SupportSectionProps {
 const SupportSection: React.FC<SupportSectionProps> = ({ onHelp, onContact, onPrivacy, onTerms, onAbout }) => {
   return (
     <View style={settingsStyles.section}>
-      <Text style={settingsStyles.sectionTitle}>Support</Text>
+      <Text style={settingsStyles.sectionTitle}>Quick Links</Text>
       <TouchableOpacity style={settingsStyles.actionButton} onPress={onAbout}>
         <Text style={settingsStyles.actionButtonText}>About</Text>
       </TouchableOpacity>

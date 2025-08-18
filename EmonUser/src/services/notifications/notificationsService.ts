@@ -1,5 +1,5 @@
 import { firestore } from '../firebase/firebaseConfig';
-import { collection, addDoc, query, where, orderBy, getDocs, Timestamp, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, getDocs, Timestamp, onSnapshot, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 
 export interface AppNotification {
   id?: string;
@@ -25,21 +25,33 @@ class NotificationsService {
 
   subscribe(uid: string, onChange: (items: AppNotification[]) => void): () => void {
     const q = query(this.col(uid), orderBy('createdAt', 'desc'));
-    const unsub = onSnapshot(q, (snap) => {
-      const items = snap.docs.map((d) => {
-        const data = d.data() as any;
-        return {
-          id: d.id,
-          type: data.type,
-          title: data.title,
-          body: data.body,
-          createdAt: data.createdAt?.toDate?.() || new Date(),
-          read: !!data.read,
-          meta: data.meta || {},
-        } as AppNotification;
-      });
-      try { onChange(items); } catch {}
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const items = snap.docs.map((d) => {
+          const data = d.data() as any;
+          return {
+            id: d.id,
+            type: data.type,
+            title: data.title,
+            body: data.body,
+            createdAt: data.createdAt?.toDate?.() || new Date(),
+            read: !!data.read,
+            meta: data.meta || {},
+          } as AppNotification;
+        });
+        try { onChange(items); } catch {}
+      },
+      (error) => {
+        // Common when auth state changes to logged-out; suppress noisy logs
+        // and allow caller cleanup to run.
+        if ((error as any)?.code === 'permission-denied') {
+          // no-op
+          return;
+        }
+        console.warn('Notifications snapshot error:', error);
+      }
+    );
     return unsub;
   }
 
@@ -49,6 +61,15 @@ class NotificationsService {
 
   async deleteMany(uid: string, ids: string[]): Promise<void> {
     await Promise.all(ids.map((id) => this.delete(uid, id)));
+  }
+
+  async markRead(uid: string, id: string): Promise<void> {
+    try {
+      await updateDoc(doc(firestore, 'users', uid, 'notifications', id), { read: true });
+    } catch (e) {
+      // Non-fatal
+      console.warn('markRead failed:', e);
+    }
   }
 
   async list(uid: string): Promise<AppNotification[]> {

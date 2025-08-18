@@ -1,8 +1,48 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, Text, View, StyleSheet, Linking, TouchableOpacity } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import { getAuth } from 'firebase/auth';
+import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { settingsStyles } from '../../settings/styles';
 
 const PrivacyPolicyScreen: React.FC = () => {
+  const navigation = useNavigation<any>();
+  const auth = getAuth();
+  const db = getFirestore();
+  const [accepted, setAccepted] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        try {
+          const ref = doc(db, 'users', user.uid);
+          const snap = await getDoc(ref);
+          const v = !!snap.data()?.acceptedPrivacy;
+          setAccepted(v);
+        } catch {}
+      } else {
+        try {
+          const v = await AsyncStorage.getItem('accepted_privacy');
+          setAccepted(v === 'true');
+        } catch {}
+      }
+    };
+    load();
+  }, []);
+
+  const handleAccept = async () => {
+    const user = auth.currentUser;
+    setAccepted(true);
+    if (user) {
+      try { await updateDoc(doc(db, 'users', user.uid), { acceptedPrivacy: true, acceptedPrivacyAt: new Date() }); } catch {}
+    } else {
+      try { await AsyncStorage.setItem('accepted_privacy', 'true'); } catch {}
+      try { navigation.navigate('SignUp'); } catch {}
+    }
+  };
+
   return (
     <ScrollView style={settingsStyles.container}>
       {/* Document Card */}
@@ -55,11 +95,17 @@ const PrivacyPolicyScreen: React.FC = () => {
 
           <View style={stylesLegal.divider} />
           <View>
-            <TouchableOpacity onPress={() => Linking.openURL('https://emon.app/privacy')}>
-              <Text style={stylesLegal.link}>View full Privacy Policy online →</Text>
-            </TouchableOpacity>
-            <Text style={[stylesLegal.muted, { marginTop: 8 }]}>Effective: Jan 1, 2024</Text>
+            <Text style={[stylesLegal.muted, { marginTop: 8 }]}>Effective: Jan 1, 2024 - Present</Text>
           </View>
+
+          {/* Acceptance checkbox */}
+          <View style={[stylesLegal.divider, { marginTop: 16 }]} />
+          <TouchableOpacity style={stylesLegal.acceptRow} onPress={handleAccept} activeOpacity={0.7}>
+            <View style={[stylesLegal.checkboxBox, accepted && stylesLegal.checkboxBoxChecked]}>
+              {accepted && <Text style={stylesLegal.checkboxMark}>✓</Text>}
+            </View>
+            <Text style={stylesLegal.body}>I have read and accept the Privacy Policy</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </ScrollView>
@@ -115,4 +161,18 @@ const stylesLegal = StyleSheet.create({
     justifyContent: 'space-between',
   },
   muted: { color: '#9CA3AF' },
+  acceptRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  checkboxBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#9CA3AF',
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  checkboxBoxChecked: { backgroundColor: '#5B934E', borderColor: '#5B934E' },
+  checkboxMark: { color: '#fff', fontSize: 14, lineHeight: 14, fontWeight: '700' },
 });

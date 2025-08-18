@@ -6,7 +6,8 @@ import {
   ScrollView,
   RefreshControl,
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { Alert } from 'react-native';
 
 // Gradually adding components back
 import LoadingScreen from './components/LoadingScreen';
@@ -36,6 +37,7 @@ import { notificationsService } from '../../services/notifications/notifications
 const DashboardScreen: React.FC = () => {
   // Navigation
   const navigation = useNavigation();
+  const route = useRoute<any>();
   const navigationHelper = new NavigationHelper(navigation);
 
   // State
@@ -92,6 +94,22 @@ const DashboardScreen: React.FC = () => {
       });
     }
   }, [sensors, userAppliances]);
+
+  // If navigated from a notification targeting the gauge, check if condition is resolved
+  useFocusEffect(
+    useCallback(() => {
+      const params = (route as any)?.params;
+      if (params?.fromNotification && params?.focus === 'gauge') {
+        try {
+          const max = gaugeManager.getSettings().maxValue;
+          const total = energyTotals.totalEnergy || 0;
+          if (total <= max) {
+            Alert.alert('Notification resolved', 'Gauge is back within limit.');
+          }
+        } catch {}
+      }
+    }, [route, energyTotals.totalEnergy, gaugeManager])
+  );
 
   // Safe data loading with error boundaries
   useEffect(() => {

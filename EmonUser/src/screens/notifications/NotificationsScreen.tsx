@@ -82,6 +82,45 @@ const NotificationsScreen: React.FC = () => {
   const renderItem = ({ item }: { item: AppNotification }) => {
     const isSelected = !!(item.id && selected[item.id]);
     const isUnread = !item.read;
+    const handleOpen = async () => {
+      const uid = getAuth().currentUser?.uid;
+      if (!uid) return;
+      try {
+        if (item.id && isUnread) {
+          await notificationsService.markRead(uid, item.id);
+        }
+      } catch {}
+
+      // Navigate based on notification type
+      if (item.type === 'APPLIANCE_LIMIT') {
+        const applianceId = (item as any)?.meta?.applianceId;
+        const applianceName = item.title;
+        try {
+          navigation.navigate('Appliances' as never, {
+            focusedApplianceId: applianceId,
+            scrollToAppliance: true,
+            highlightAppliance: true,
+            applianceName,
+            fromNotification: true,
+          } as never);
+        } catch (e) {
+          try { (navigation as any)?.getParent?.()?.navigate('Appliances'); }
+          catch {}
+          console.warn('Navigation to Appliances failed:', e);
+        }
+      } else if (item.type === 'GAUGE_LIMIT') {
+        try {
+          navigation.navigate('DashboardMain' as never, {
+            focus: 'gauge',
+            fromNotification: true,
+            notificationId: item.id,
+          } as never);
+        } catch (e) {
+          try { (navigation as any)?.getParent?.()?.navigate('Dashboard'); } catch {}
+          console.warn('Navigation to DashboardMain failed:', e);
+        }
+      }
+    };
     
     return (
       <TouchableOpacity 
@@ -91,7 +130,7 @@ const NotificationsScreen: React.FC = () => {
           if (Object.keys(selected).length > 0) {
             toggleSelect(item.id);
           } else {
-            // Mark as read or navigate to notification details
+            handleOpen();
           }
         }}
         activeOpacity={0.7}

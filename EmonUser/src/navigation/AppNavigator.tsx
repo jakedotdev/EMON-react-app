@@ -8,6 +8,8 @@ import MainTabNavigator from './MainTabNavigator';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignUpScreen from '../screens/auth/SignUpScreen';
 import { authService } from '../services/auth/authService';
+import PrivacyPolicyScreen from '../screens/settings/support/PrivacyPolicyScreen';
+import TermsOfServiceScreen from '../screens/settings/support/TermsOfServiceScreen';
 
 const Stack = createStackNavigator();
 
@@ -45,6 +47,9 @@ const AppNavigator = () => {
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="SignUp" component={SignUpScreen} />
+            {/* Allow viewing legal docs pre-auth */}
+            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+            <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
           </>
         )}
       </Stack.Navigator>
