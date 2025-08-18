@@ -15,19 +15,19 @@ import {
 import { launchImageLibrary, launchCamera, ImagePickerResponse, MediaType } from 'react-native-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import type { UserProfile as UserProfileType } from '../../services/user/userService';
-import { getAuth } from 'firebase/auth';
+import { auth } from '../../services/firebase/firebaseConfig';
 import { profileDataManager } from './managers/ProfileDataManager';
 
 type UserProfile = UserProfileType;
 
 const ProfileScreen: React.FC = () => {
-  const auth = getAuth();
   const currentUser = auth.currentUser;
   const navigation = useNavigation<any>();
   
   const [profile, setProfile] = useState<UserProfile>({
     id: currentUser?.uid || '',
     fullName: currentUser?.displayName || 'User',
+    displayName: currentUser?.displayName || 'User',
     email: currentUser?.email || '',
     phone: '',
     address: '',
@@ -54,8 +54,13 @@ const ProfileScreen: React.FC = () => {
     if (!currentUser) return;
     try {
       const userProfile = await profileDataManager.loadProfile();
-      setProfile(userProfile);
-      setEditedProfile(userProfile);
+      // Ensure displayName is present and defaults to fullName if missing
+      const normalized = {
+        ...userProfile,
+        displayName: userProfile.displayName || userProfile.fullName,
+      } as UserProfile;
+      setProfile(normalized);
+      setEditedProfile(normalized);
     } catch (error) {
       console.error('Error loading profile:', error);
       Alert.alert('Error', 'Failed to load profile');
@@ -351,6 +356,7 @@ const ProfileScreen: React.FC = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Personal Information</Text>
         {renderProfileField('Full Name', profile.fullName, 'fullName')}
+        {renderProfileField('Display Name', (profile.displayName || profile.fullName), 'displayName')}
         {renderProfileField('Email', profile.email, 'email', false)}
         {renderProfileField('Phone', profile.phone, 'phone')}
         {renderProfileField('Address', profile.address, 'address')}

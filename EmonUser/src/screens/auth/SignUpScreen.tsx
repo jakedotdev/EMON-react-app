@@ -10,12 +10,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Dimensions,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { signUpManager } from './managers/SignUpManager';
 import TimezonePicker from './components/TimezonePicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+
+const { height: screenHeight } = Dimensions.get('window');
+const formMaxHeight = Math.min(screenHeight * 0.55, 480);
 
 const styles = StyleSheet.create({
   container: {
@@ -79,6 +83,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     width: '100%',
     alignSelf: 'stretch',
+  },
+  formScroll: {
+    maxHeight: formMaxHeight,
+  },
+  formContent: {
+    paddingBottom: 8,
   },
   
   separator: {
@@ -353,6 +363,13 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
           </View>
           <ScrollView style={styles.contentScroll} contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
           <View style={styles.form}>
+            <ScrollView
+              style={styles.formScroll}
+              contentContainerStyle={styles.formContent}
+              nestedScrollEnabled={true}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Full Name</Text>
               <TextInput
@@ -429,47 +446,47 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
               </View>
             </View>
 
-            {/* Agreements */}
-            <View style={styles.agreementsSection}>
-              <TouchableOpacity
-                style={styles.checkboxRow}
-                onPress={() => setAcceptPrivacy((v) => !v)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.checkboxBox, acceptPrivacy && styles.checkboxBoxChecked]}
-                >
-                  {acceptPrivacy && <Text style={styles.checkboxMark}>✓</Text>}
-                </View>
-                <Text style={styles.checkboxText}>I have read and accept the </Text>
+              {/* Agreements */}
+              <View style={styles.agreementsSection}>
                 <TouchableOpacity
-                  onPress={() => {
-                    try { navigation.navigate('PrivacyPolicy'); } catch (e) { Alert.alert('Info', 'Privacy Policy screen unavailable.'); }
-                  }}
+                  style={styles.checkboxRow}
+                  onPress={() => setAcceptPrivacy((v) => !v)}
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.linkText}>Privacy Policy</Text>
+                  <View style={[styles.checkboxBox, acceptPrivacy && styles.checkboxBoxChecked]}
+                  >
+                    {acceptPrivacy && <Text style={styles.checkboxMark}>✓</Text>}
+                  </View>
+                  <Text style={styles.checkboxText}>I have read and accept the </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      try { navigation.navigate('PrivacyPolicy'); } catch (e) { Alert.alert('Info', 'Privacy Policy screen unavailable.'); }
+                    }}
+                  >
+                    <Text style={styles.linkText}>Privacy Policy</Text>
+                  </TouchableOpacity>
                 </TouchableOpacity>
-              </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.checkboxRow}
-                onPress={() => setAcceptTerms((v) => !v)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.checkboxBox, acceptTerms && styles.checkboxBoxChecked]}
-                >
-                  {acceptTerms && <Text style={styles.checkboxMark}>✓</Text>}
-                </View>
-                <Text style={styles.checkboxText}>I agree to the </Text>
                 <TouchableOpacity
-                  onPress={() => {
-                    try { navigation.navigate('TermsOfService'); } catch (e) { Alert.alert('Info', 'Terms of Service screen unavailable.'); }
-                  }}
+                  style={styles.checkboxRow}
+                  onPress={() => setAcceptTerms((v) => !v)}
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.linkText}>Terms of Service</Text>
+                  <View style={[styles.checkboxBox, acceptTerms && styles.checkboxBoxChecked]}
+                  >
+                    {acceptTerms && <Text style={styles.checkboxMark}>✓</Text>}
+                  </View>
+                  <Text style={styles.checkboxText}>I agree to the </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      try { navigation.navigate('TermsOfService'); } catch (e) { Alert.alert('Info', 'Terms of Service screen unavailable.'); }
+                    }}
+                  >
+                    <Text style={styles.linkText}>Terms of Service</Text>
+                  </TouchableOpacity>
                 </TouchableOpacity>
-              </TouchableOpacity>
-            </View>
-
+              </View>
+            </ScrollView>
           </View>
         </ScrollView>
         {/* Sticky footer with CTA and login prompt */}

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Animated } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import DashboardStackNavigator from './DashboardStackNavigator';
 import AppliancesScreen from '../screens/appliances/AppliancesScreen';
 import AnalyticsScreenRefactored from '../screens/analytics/AnalyticsScreenRefactored';
@@ -9,57 +10,73 @@ import SettingsStackNavigator from './SettingsStackNavigator';
 
 const Tab = createBottomTabNavigator();
 
-// Custom tab bar icons
-const TabIcon = ({ name, focused }: { name: string; focused: boolean }) => (
-  <View style={[styles.tabIcon, focused && styles.tabIconFocused]}>
-    <Text style={[styles.tabIconText, focused && styles.tabIconTextFocused]}>
-      {name.charAt(0).toUpperCase()}
-    </Text>
-  </View>
-);
+// Animated tab icon with MaterialCommunityIcons
+const TabIcon = ({ icon, focused, label }: { icon: string; focused: boolean; label: string }) => {
+  const scale = useRef(new Animated.Value(focused ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.spring(scale, {
+      toValue: focused ? 1 : 0,
+      useNativeDriver: true,
+      friction: 6,
+      tension: 80,
+    }).start();
+  }, [focused, scale]);
+
+  const translateY = scale.interpolate({ inputRange: [0, 1], outputRange: [0, -4] });
+  const iconScale = scale.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
+
+  return (
+    <Animated.View style={[styles.tabIcon, { transform: [{ translateY }, { scale: iconScale }] }, focused && styles.tabIconFocused]}>
+      <Icon name={icon} size={22} color={focused ? '#FFFFFF' : '#467933'} />
+    </Animated.View>
+  );
+};
 
 const MainTabNavigator = () => (
   <Tab.Navigator
+    initialRouteName="Dashboard"
     screenOptions={{
       tabBarActiveTintColor: '#5B934E',
       tabBarInactiveTintColor: '#9CC39C',
       tabBarStyle: styles.tabBar,
       headerShown: false,
+      tabBarLabelStyle: styles.tabLabel,
     }}
   >
-    <Tab.Screen 
-      name="Dashboard" 
-      component={DashboardStackNavigator}
-      options={{
-        tabBarIcon: ({ focused }) => <TabIcon name="Dashboard" focused={focused} />,
-      }}
-    />
-    <Tab.Screen 
-      name="Appliances" 
-      component={AppliancesScreen}
-      options={{
-        tabBarIcon: ({ focused }) => <TabIcon name="Appliances" focused={focused} />,
-      }}
-    />
-    <Tab.Screen 
-      name="Analytics" 
-      component={AnalyticsScreenRefactored}
-      options={{
-        tabBarIcon: ({ focused }) => <TabIcon name="Analytics" focused={focused} />,
-      }}
-    />
-    <Tab.Screen 
-      name="Profile" 
+    {/* Order: Profile (left), Appliances, Dashboard (center), Analytics, Settings */}
+    <Tab.Screen
+      name="Profile"
       component={ProfileScreen}
       options={{
-        tabBarIcon: ({ focused }) => <TabIcon name="Profile" focused={focused} />,
+        tabBarIcon: ({ focused }) => <TabIcon icon="account-circle" label="Profile" focused={focused} />,
       }}
     />
-    <Tab.Screen 
-      name="Settings" 
+    <Tab.Screen
+      name="Appliances"
+      component={AppliancesScreen}
+      options={{
+        tabBarIcon: ({ focused }) => <TabIcon icon="power-plug" label="Appliances" focused={focused} />,
+      }}
+    />
+    <Tab.Screen
+      name="Dashboard"
+      component={DashboardStackNavigator}
+      options={{
+        tabBarIcon: ({ focused }) => <TabIcon icon="view-dashboard" label="Dashboard" focused={focused} />,
+      }}
+    />
+    <Tab.Screen
+      name="Analytics"
+      component={AnalyticsScreenRefactored}
+      options={{
+        tabBarIcon: ({ focused }) => <TabIcon icon="chart-bar" label="Analytics" focused={focused} />,
+      }}
+    />
+    <Tab.Screen
+      name="Settings"
       component={SettingsStackNavigator}
       options={{
-        tabBarIcon: ({ focused }) => <TabIcon name="Settings" focused={focused} />,
+        tabBarIcon: ({ focused }) => <TabIcon icon="cog" label="Settings" focused={focused} />,
       }}
     />
   </Tab.Navigator>
@@ -76,9 +93,9 @@ const styles = StyleSheet.create({
   },
 
   tabIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#D3E6BF',
     justifyContent: 'center',
     alignItems: 'center',
@@ -86,13 +103,8 @@ const styles = StyleSheet.create({
   tabIconFocused: {
     backgroundColor: '#5B934E',
   },
-  tabIconText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#467933',
-  },
-  tabIconTextFocused: {
-    color: '#FFFFFF',
+  tabLabel: {
+    fontSize: 11,
   },
 });
 

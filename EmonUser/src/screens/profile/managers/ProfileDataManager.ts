@@ -33,6 +33,7 @@ export class ProfileDataManager {
       profile = {
         id: cu.uid,
         fullName: cu.displayName || 'User',
+        displayName: cu.displayName || 'User',
         email: cu.email || '',
         phone: '',
         address: '',
@@ -56,8 +57,11 @@ export class ProfileDataManager {
     const cu = this.currentUser;
     if (!cu) throw new Error('No authenticated user');
 
-    if (updated.fullName !== cu.displayName) {
-      await fbUpdateProfile(cu, { displayName: updated.fullName });
+    // Keep Firebase Auth's displayName in sync with the user's chosen displayName.
+    // If displayName is empty, fall back to fullName.
+    const nextDisplayName = (updated as any).displayName || updated.fullName || '';
+    if (nextDisplayName !== (cu.displayName || '')) {
+      await fbUpdateProfile(cu, { displayName: nextDisplayName });
     }
 
     await userService.updateUserProfile(cu.uid, updated);

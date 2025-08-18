@@ -3,6 +3,7 @@ import { getFirestore, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore
 export interface UserProfile {
   id: string;
   fullName: string;
+  displayName?: string;
   email: string;
   phone: string;
   address: string;
@@ -32,6 +33,7 @@ class UserService {
                  return {
            id: userSnap.id,
            fullName: data.fullName || '',
+           displayName: data.displayName || data.fullName || '',
            email: data.email || '',
            phone: data.phone || '',
            address: data.address || '',
@@ -74,6 +76,8 @@ class UserService {
       const userRef = doc(this.db, 'users', userId);
       await setDoc(userRef, {
         ...profile,
+        // If displayName is not provided, default it to fullName on creation
+        displayName: (profile as any).displayName ?? profile.fullName ?? '',
         createdAt: new Date(),
         updatedAt: new Date(),
       });
