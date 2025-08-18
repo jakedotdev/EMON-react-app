@@ -1,39 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Alert,
   ActivityIndicator,
   RefreshControl,
-  Switch,
 } from 'react-native';
-import { deviceService } from '../../services/devices/deviceService';
-import { sensorService } from '../../services/sensors/sensorService';
+import { useRoute, useFocusEffect } from '@react-navigation/native';
+
+// services are handled inside the manager
 import { getAuth } from 'firebase/auth';
 import ApplianceRegistrationModal from '../../components/appliances/ApplianceRegistrationModal';
+import AppliancesHeader from './components/AppliancesHeader';
+import SearchBar from './components/SearchBar';
+import GroupChips from './components/GroupChips';
+import BulkActionsBar from './components/BulkActionsBar';
+import ApplianceCard from './components/ApplianceCard';
+import ConfirmDeleteModal from './components/ConfirmDeleteModal';
+import ConfirmBulkDeleteModal from './components/ConfirmBulkDeleteModal';
+import { AppliancesDataManager, Appliance } from './managers/AppliancesDataManager';
 
-interface Appliance {
-  id: string;
-  name: string;
-  icon: string;
-  group: string;
-  deviceId: string;
-  deviceName?: string;
-  deviceSerialNumber?: string;
-  isActive: boolean;
-  createdAt: Date;
-  maxRuntime?: {
-    value: number;
-    unit: string;
-  };
-  maxKWh?: number;
-  notificationsEnabled: boolean;
-}
+// Appliance type imported from manager
 
 const AppliancesScreen: React.FC = () => {
+  const route = useRoute();
+  const scrollViewRef = useRef<ScrollView>(null);
+  const applianceRefs = useRef<{[key: string]: View | null}>({});
+
   const [appliances, setAppliances] = useState<Appliance[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -43,104 +38,132 @@ const AppliancesScreen: React.FC = () => {
   const [sensorData, setSensorData] = useState<{[serialNumber: string]: any}>({});
   const [expandedSensors, setExpandedSensors] = useState<{[applianceId: string]: boolean}>({});
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [applianceToDelete, setApplianceToDelete] = useState<Appliance | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [groupFilter, setGroupFilter] = useState<string>('All');
+  const [availableGroups, setAvailableGroups] = useState<string[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedAppliances, setSelectedAppliances] = useState<Set<string>>(new Set());
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [highlightedApplianceId, setHighlightedApplianceId] = useState<string | null>(null);
+  const managerRef = useRef<AppliancesDataManager | null>(null);
 
   const auth = getAuth();
   const currentUser = auth.currentUser;
 
-  // Map device serial numbers to sensor IDs
-  const getSerialNumberToSensorIdMapping = (): { [serialNumber: string]: string } => {
-    return {
-      '11032401': '1',
-      '11032402': '2', 
-      '11032403': '3',
-      // Add more mappings as needed
-    };
-  };
+  // Mapping helper moved to AppliancesDataManager
 
   useEffect(() => {
-    if (currentUser) {
-      loadAppliances();
+    if (!managerRef.current) {
+      managerRef.current = new AppliancesDataManager({
+        setAppliances,
+        setLoading,
+        setDeviceStatuses,
+        setSensorData,
+        setAvailableGroups,
+        setRefreshing,
+      });
     }
-  }, [currentUser]);
+    let cleanup: (() => void) | undefined;
+    (async () => {
+      cleanup = await managerRef.current!.initialize();
+    })();
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, []);
+
+  // Handle navigation parameters to focus on specific appliance
+  useFocusEffect(
+    React.useCallback(() => {
+      const params = route.params as any;
+      if (params?.focusedApplianceId && params?.scrollToAppliance) {
+        console.log('Focusing on appliance:', params.focusedApplianceId, params.applianceName);
+
+        // Set highlighted appliance
+        setHighlightedApplianceId(params.focusedApplianceId);
+
+        // Expand the appliance sensors if requested
+        if (params.highlightAppliance) {
+          setExpandedSensors(prev => ({
+            ...prev,
+            [params.focusedApplianceId]: true
+          }));
+        }
+
+        // Clear search to ensure appliance is visible
+        setSearchQuery('');
+
+        // Scroll to appliance after a short delay to ensure rendering is complete
+        setTimeout(() => {
+          scrollToAppliance(params.focusedApplianceId);
+        }, 500);
+
+        // If this came from a notification, check if the triggering condition has been resolved
+        if (params.fromNotification) {
+          setTimeout(() => {
+            try {
+              const app = appliances.find(a => a.id === params.focusedApplianceId);
+              if (!app) {
+                Alert.alert('Notification info', 'This appliance is no longer available. It may have been removed.');
+                return;
+              }
+              const data = sensorData[app.deviceSerialNumber || ''];
+              const energy = Number(data?.energy || 0);
+              const runtimeSec = Number((data?.runtimehr || 0) * 3600 + (data?.runtimemin || 0) * 60 + (data?.runtimesec || 0));
+
+              let overKwh = false;
+              if (typeof app.maxKWh === 'number' && app.maxKWh > 0) {
+                overKwh = energy > app.maxKWh;
+              }
+
+              let overRuntime = false;
+              if (app.maxRuntime?.value && app.maxRuntime?.unit) {
+                const toSeconds = (v: number, u: string) => u === 'hours' ? v * 3600 : u === 'minutes' ? v * 60 : v;
+                const limitSec = toSeconds(Number(app.maxRuntime.value), String(app.maxRuntime.unit));
+                if (limitSec > 0) overRuntime = runtimeSec > limitSec;
+              }
+
+              if (!overKwh && !overRuntime) {
+                Alert.alert('Notification resolved', 'Current usage is within set limits.');
+              }
+            } catch {}
+          }, 600);
+        }
+
+        // Clear highlight after 3 seconds
+        setTimeout(() => {
+          setHighlightedApplianceId(null);
+        }, 3000);
+      }
+    }, [route.params])
+  );
+
+  const scrollToAppliance = (applianceId: string) => {
+    const applianceRef = applianceRefs.current[applianceId];
+    if (applianceRef && scrollViewRef.current) {
+      applianceRef.measureLayout(
+        scrollViewRef.current as any,
+        (x, y) => {
+          scrollViewRef.current?.scrollTo({
+            y: y - 100, // Offset to show some content above
+            animated: true
+          });
+        },
+        () => {
+          console.log('Failed to measure appliance layout');
+        }
+      );
+    }
+  };
 
   const loadAppliances = async () => {
-    if (!currentUser) return;
-
-    try {
-      setLoading(true);
-      console.log('Loading appliances for user:', currentUser.uid);
-      
-      // Get user's appliances
-      const userAppliances = await deviceService.getUserAppliances(currentUser.uid);
-      console.log('Loaded appliances:', userAppliances);
-
-      // Get user's devices to match with appliances
-      const userDevices = await deviceService.getUserDevices(currentUser.uid);
-      
-      // Combine appliance data with device information
-      const appliancesWithDeviceInfo = userAppliances.map(appliance => {
-        const device = userDevices.find(d => d.id === appliance.deviceId);
-        return {
-          ...appliance,
-          deviceName: device?.name || 'Unknown Device',
-          deviceSerialNumber: device?.serialNumber || 'Unknown',
-        };
-      });
-
-      setAppliances(appliancesWithDeviceInfo);
-
-      // Set up real-time listeners for device status and sensor data
-      const unsubscribers: (() => void)[] = [];
-      const serialToSensorMapping = getSerialNumberToSensorIdMapping();
-      
-      userDevices.forEach(device => {
-        // Listen to device connection status
-        const connectionUnsubscribe = deviceService.listenToDeviceConnection(
-          device.serialNumber,
-          (isConnected, applianceState) => {
-            setDeviceStatuses(prev => ({
-              ...prev,
-              [device.id]: { isConnected, applianceState }
-            }));
-          }
-        );
-        unsubscribers.push(connectionUnsubscribe);
-
-        // Listen to sensor data for this device
-        const sensorId = serialToSensorMapping[device.serialNumber];
-        if (sensorId) {
-          console.log(`Setting up sensor listener for device ${device.serialNumber} -> sensor ID ${sensorId}`);
-          const sensorUnsubscribe = sensorService.listenToSensor(
-            sensorId,
-            (data) => {
-              console.log(`Received sensor data for device ${device.serialNumber}:`, data);
-              setSensorData(prev => ({
-                ...prev,
-                [device.serialNumber]: data
-              }));
-            }
-          );
-          unsubscribers.push(sensorUnsubscribe);
-        } else {
-          console.warn(`No sensor ID mapping found for device serial number: ${device.serialNumber}`);
-        }
-      });
-
-      return () => {
-        unsubscribers.forEach(unsubscribe => unsubscribe());
-      };
-    } catch (error) {
-      console.error('Error loading appliances:', error);
-      Alert.alert('Error', 'Failed to load appliances');
-    } finally {
-      setLoading(false);
-    }
+    await managerRef.current?.loadAppliances();
   };
 
   const onRefresh = async () => {
-    setRefreshing(true);
-    await loadAppliances();
-    setRefreshing(false);
+    await managerRef.current?.refresh();
   };
 
   const getApplianceStatus = (appliance: Appliance) => {
@@ -158,192 +181,127 @@ const AppliancesScreen: React.FC = () => {
 
   const toggleApplianceState = async (appliance: Appliance) => {
     try {
-      const serialToSensorMapping = getSerialNumberToSensorIdMapping();
-      const sensorId = serialToSensorMapping[appliance.deviceSerialNumber || ''];
-      
-      console.log('Toggle attempt details:', {
-        applianceName: appliance.name,
-        deviceSerialNumber: appliance.deviceSerialNumber,
-        sensorId,
-        serialToSensorMapping,
-        deviceStatuses: deviceStatuses[appliance.deviceId]
-      });
-      
-      if (!sensorId) {
-        console.error(`No sensor ID found for device serial: ${appliance.deviceSerialNumber}`);
-        Alert.alert('Error', `Cannot find sensor ID for device ${appliance.deviceSerialNumber}`);
-        return;
-      }
-
-      const currentState = deviceStatuses[appliance.deviceId]?.applianceState || false;
-      const newState = !currentState;
-      
-      console.log(`Toggling appliance ${appliance.name} (device: ${appliance.deviceSerialNumber}, sensor: ${sensorId}) from ${currentState} to ${newState}`);
-      
-      // Update the appliance state in the Realtime Database
-      await sensorService.updateApplianceState(sensorId, newState);
-      
-      // Temporarily update the local state to provide immediate UI feedback
-      setDeviceStatuses(prev => ({
-        ...prev,
-        [appliance.deviceId]: {
-          ...prev[appliance.deviceId],
-          applianceState: newState
-        }
-      }));
-      
-      console.log(`Successfully updated appliance state for ${appliance.name}`);
+      await managerRef.current?.toggleApplianceState(appliance, deviceStatuses);
     } catch (error) {
       console.error('Error toggling appliance state:', error);
-      console.error('Error details:', error);
-      Alert.alert('Error', `Failed to toggle appliance state: ${error.message}`);
+      Alert.alert('Error', `Failed to toggle appliance state: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
-  const renderApplianceCard = (appliance: Appliance) => {
-    const status = getApplianceStatus(appliance);
-    const isExpanded = expandedSensors[appliance.id] || false;
-    const sensorDataForDevice = sensorData[appliance.deviceSerialNumber || ''];
-    
-    // Debug logging
-    if (isExpanded) {
-      console.log(`Rendering appliance card for ${appliance.name}:`, {
-        applianceId: appliance.id,
-        deviceSerialNumber: appliance.deviceSerialNumber,
-        sensorDataKeys: Object.keys(sensorData),
-        sensorDataForDevice,
-        isExpanded
-      });
+  const handleDeleteAppliance = (appliance: Appliance) => {
+    setApplianceToDelete(appliance);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteAppliance = async () => {
+    if (!applianceToDelete || !currentUser) return;
+
+    try {
+      setLoading(true);
+      console.log('Deleting appliance:', applianceToDelete.name);
+
+      // Delete the appliance using manager
+      await managerRef.current?.deleteAppliance(currentUser.uid, applianceToDelete.id);
+
+      // Remove from local state
+      setAppliances(prev => prev.filter(a => a.id !== applianceToDelete.id));
+
+      setShowDeleteModal(false);
+      setApplianceToDelete(null);
+
+      Alert.alert('Success', `${applianceToDelete.name} has been unregistered successfully.`);
+    } catch (error) {
+      console.error('Error deleting appliance:', error);
+      Alert.alert('Error', 'Failed to unregister appliance. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    
-    return (
-      <View key={appliance.id} style={styles.applianceCard}>
-        <View style={styles.applianceHeader}>
-          <Text style={styles.applianceIcon}>{appliance.icon}</Text>
-          <View style={styles.applianceInfo}>
-            <Text style={styles.applianceName}>{appliance.name}</Text>
-            <Text style={styles.applianceGroup}>{appliance.group}</Text>
-            <Text style={styles.deviceInfo}>
-              Device: {appliance.deviceName} ({appliance.deviceSerialNumber})
-            </Text>
-          </View>
-          <View style={styles.statusContainer}>
-            <View style={[
-              styles.statusIndicator,
-              { backgroundColor: status.isConnected ? '#5B934E' : '#F44336' }
-            ]} />
-            <Text style={styles.statusText}>
-              {status.isConnected ? 'Connected' : 'Disconnected'}
-            </Text>
-          </View>
-        </View>
-        
-        {/* Runtime Control Container */}
-        <View style={styles.runtimeContainer}>
-          <View style={styles.runtimeInfo}>
-            {appliance.maxRuntime && (
-              <View style={styles.runtimeRow}>
-                <Text style={styles.runtimeLabel}>Max Runtime:</Text>
-                <Text style={styles.runtimeValue}>
-                  {appliance.maxRuntime.value} {appliance.maxRuntime.unit}
-                </Text>
-                <Text style={[styles.statusBadge, { 
-                  backgroundColor: status.applianceState ? '#E8F5E8' : '#FFEBEE',
-                  color: status.applianceState ? '#2E7D32' : '#C62828'
-                }]}>
-                  {status.applianceState ? 'ON' : 'OFF'}
-                </Text>
-              </View>
-            )}
-            <View style={styles.runtimeRow}>
-              <Text style={styles.runtimeLabel}>Actual Runtime:</Text>
-              <Text style={styles.runtimeValue}>
-                {sensorDataForDevice?.getFormattedRuntime?.() || '0h 0m 0s'}
-              </Text>
-              <Switch
-                value={status.applianceState}
-                onValueChange={() => toggleApplianceState(appliance)}
-                trackColor={{ false: '#FFCDD2', true: '#C8E6C9' }}
-                thumbColor={status.applianceState ? '#4CAF50' : '#F44336'}
-                style={styles.switch}
-              />
-            </View>
-          </View>
-        </View>
+  };
 
-        {appliance.maxKWh && (
-          <View style={styles.limitInfo}>
-            <Text style={styles.limitText}>
-              Max kWh: {appliance.maxKWh} kWh
-            </Text>
-          </View>
-        )}
+  const cancelDeleteAppliance = () => {
+    setShowDeleteModal(false);
+    setApplianceToDelete(null);
+  };
 
-        {/* Sensor Data Section */}
-        <View style={styles.sensorSection}>
-          <TouchableOpacity
-            style={styles.viewSensorsButton}
-            onPress={() => toggleSensorView(appliance.id)}
-          >
-            <Text style={styles.viewSensorsText}>
-              {isExpanded ? 'Hide Sensors' : 'View Sensors'}
-            </Text>
-            <Text style={styles.viewSensorsIcon}>
-              {isExpanded ? '▼' : '▶'}
-            </Text>
-          </TouchableOpacity>
-
-          {isExpanded && sensorDataForDevice && (
-            <View style={styles.sensorDataContainer}>
-              <View style={styles.sensorDataRow}>
-                <View style={styles.sensorDataItem}>
-                  <Text style={styles.sensorDataLabel}>Power</Text>
-                  <Text style={styles.sensorDataValue}>
-                    {sensorDataForDevice.power?.toFixed(2) || '0.00'} W
-                  </Text>
-                </View>
-                <View style={styles.sensorDataItem}>
-                  <Text style={styles.sensorDataLabel}>Voltage</Text>
-                  <Text style={styles.sensorDataValue}>
-                    {sensorDataForDevice.voltage?.toFixed(1) || '0.0'} V
-                  </Text>
-                </View>
-                <View style={styles.sensorDataItem}>
-                  <Text style={styles.sensorDataLabel}>Current</Text>
-                  <Text style={styles.sensorDataValue}>
-                    {sensorDataForDevice.current?.toFixed(2) || '0.00'} A
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.sensorDataRow}>
-                <View style={styles.sensorDataItem}>
-                  <Text style={styles.sensorDataLabel}>Energy</Text>
-                  <Text style={styles.sensorDataValue}>
-                    {sensorDataForDevice.energy?.toFixed(3) || '0.000'} kWh
-                  </Text>
-                </View>
-                <View style={styles.sensorDataItem}>
-                  <Text style={styles.sensorDataLabel}>State</Text>
-                  <Text style={[
-                    styles.sensorDataValue,
-                    { color: sensorDataForDevice.applianceState ? '#5B934E' : '#F44336' }
-                  ]}>
-                    {sensorDataForDevice.applianceState ? 'ON' : 'OFF'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {isExpanded && !sensorDataForDevice && (
-            <View style={styles.noSensorDataContainer}>
-              <Text style={styles.noSensorDataText}>No sensor data available</Text>
-            </View>
-          )}
-        </View>
-      </View>
+  // Filter appliances based on search query and group
+  const filteredAppliances = appliances.filter(appliance => {
+    const matchesSearch = (
+      appliance.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      appliance.group.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      appliance.deviceName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      appliance.deviceSerialNumber?.toLowerCase().includes(searchQuery.toLowerCase())
     );
+    const matchesGroup = groupFilter === 'All' || appliance.group === groupFilter;
+    return matchesSearch && matchesGroup;
+  });
+
+  // Toggle selection mode
+  const toggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    setSelectedAppliances(new Set());
+  };
+
+  // Toggle appliance selection
+  const toggleApplianceSelection = (applianceId: string) => {
+    const newSelected = new Set(selectedAppliances);
+    if (newSelected.has(applianceId)) {
+      newSelected.delete(applianceId);
+    } else {
+      newSelected.add(applianceId);
+    }
+    setSelectedAppliances(newSelected);
+  };
+
+  // Select all appliances
+  const selectAllAppliances = () => {
+    const allIds = new Set(filteredAppliances.map(a => a.id));
+    setSelectedAppliances(allIds);
+  };
+
+  // Deselect all appliances
+  const deselectAllAppliances = () => {
+    setSelectedAppliances(new Set());
+  };
+
+  // Handle bulk delete
+  const handleBulkDelete = () => {
+    if (selectedAppliances.size === 0) {
+      Alert.alert('No Selection', 'Please select appliances to delete.');
+      return;
+    }
+    setShowBulkDeleteModal(true);
+  };
+
+  // Confirm bulk delete
+  const confirmBulkDelete = async () => {
+    if (!currentUser || selectedAppliances.size === 0) return;
+
+    try {
+      setLoading(true);
+      console.log('Bulk deleting appliances:', Array.from(selectedAppliances));
+
+      // Delete all selected appliances using manager
+      await managerRef.current?.bulkDeleteAppliances(currentUser.uid, Array.from(selectedAppliances));
+
+      // Remove from local state
+      setAppliances(prev => prev.filter(a => !selectedAppliances.has(a.id)));
+
+      setShowBulkDeleteModal(false);
+      setSelectedAppliances(new Set());
+      setIsSelectionMode(false);
+
+      Alert.alert('Success', `${selectedAppliances.size} appliance(s) have been unregistered successfully.`);
+    } catch (error) {
+      console.error('Error bulk deleting appliances:', error);
+      Alert.alert('Error', 'Failed to unregister some appliances. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cancel bulk delete
+  const cancelBulkDelete = () => {
+    setShowBulkDeleteModal(false);
   };
 
   if (loading) {
@@ -357,36 +315,55 @@ const AppliancesScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.title}>My Appliances</Text>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => setShowRegistrationModal(true)}
-          >
-            <Text style={styles.addButtonText}>+ Add Appliance</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.subtitle}>
-          {appliances.length} appliance{appliances.length !== 1 ? 's' : ''} registered
-        </Text>
-      </View>
+      <AppliancesHeader total={appliances.length} onAddPress={() => setShowRegistrationModal(true)} />
+      <SearchBar value={searchQuery} onChange={setSearchQuery} />
+      <GroupChips groups={availableGroups} selected={groupFilter} onSelect={setGroupFilter} />
+      <BulkActionsBar
+        isSelectionMode={isSelectionMode}
+        selectedCount={selectedAppliances.size}
+        totalFiltered={filteredAppliances.length}
+        onToggleSelectionMode={toggleSelectionMode}
+        onSelectAll={selectAllAppliances}
+        onDeselectAll={deselectAllAppliances}
+        onBulkDelete={handleBulkDelete}
+      />
 
       <ScrollView
+        ref={scrollViewRef}
         style={styles.content}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {appliances.length === 0 ? (
+        {filteredAppliances.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>No Appliances Found</Text>
+            <Text style={styles.emptyTitle}>
+              {appliances.length === 0 ? 'No Appliances Found' : 'No Search Results'}
+            </Text>
             <Text style={styles.emptyText}>
-              You haven't registered any appliances yet. Go to the registration modal to add your first appliance.
+              {appliances.length === 0
+                ? "You haven't registered any appliances yet. Go to the registration modal to add your first appliance."
+                : `No appliances match "${searchQuery}". Try a different search term.`
+              }
             </Text>
           </View>
         ) : (
-          appliances.map(renderApplianceCard)
+          filteredAppliances.map(appliance => (
+            <ApplianceCard
+              key={appliance.id}
+              appliance={appliance}
+              isSelectionMode={isSelectionMode}
+              selected={selectedAppliances.has(appliance.id)}
+              onSelectToggle={() => toggleApplianceSelection(appliance.id)}
+              onDelete={() => handleDeleteAppliance(appliance)}
+              status={getApplianceStatus(appliance)}
+              sensorDataForDevice={sensorData[appliance.deviceSerialNumber || '']}
+              onToggleAppliance={() => toggleApplianceState(appliance)}
+              isHighlighted={highlightedApplianceId === appliance.id}
+              isExpanded={!!expandedSensors[appliance.id]}
+              onToggleExpand={() => toggleSensorView(appliance.id)}
+            />
+          ))
         )}
       </ScrollView>
 
@@ -398,6 +375,22 @@ const AppliancesScreen: React.FC = () => {
           setShowRegistrationModal(false);
           loadAppliances(); // Reload appliances after successful registration
         }}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        visible={showDeleteModal}
+        name={applianceToDelete?.name}
+        onCancel={cancelDeleteAppliance}
+        onConfirm={confirmDeleteAppliance}
+      />
+
+      {/* Bulk Delete Confirmation Modal */}
+      <ConfirmBulkDeleteModal
+        visible={showBulkDeleteModal}
+        count={selectedAppliances.size}
+        onCancel={cancelBulkDelete}
+        onConfirm={confirmBulkDelete}
       />
     </View>
   );
@@ -416,16 +409,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#5B934E',
+    marginBottom: 8,
+  },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333333',
   },
   subtitle: {
     fontSize: 14,
@@ -444,7 +438,36 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 16,
+  },
+  chipsContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
+    gap: 8,
+  },
+  chip: {
+    backgroundColor: '#EEEEEE',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+  },
+  chipSelected: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#5B934E',
+  },
+  chipText: {
+    color: '#555555',
+    fontSize: 14,
+  },
+  chipTextSelected: {
+    color: '#2E7D32',
+    fontWeight: 'bold',
   },
   loadingContainer: {
     flex: 1,
@@ -487,6 +510,16 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  highlightedCard: {
+    backgroundColor: '#E8F5E8',
+    borderWidth: 2,
+    borderColor: '#5B934E',
+    shadowColor: '#5B934E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
   applianceHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -514,30 +547,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999999',
   },
-  statusContainer: {
-    alignItems: 'flex-end',
-  },
-  statusIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginBottom: 4,
-  },
-  statusText: {
+  energyInfo: {
     fontSize: 12,
-    color: '#666666',
+    color: '#5B934E',
+    fontWeight: '600',
+    marginTop: 2,
   },
-  limitInfo: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  limitText: {
-    fontSize: 14,
-    color: '#467933',
-  },
+
+
   runtimeContainer: {
     backgroundColor: '#F8F9FA',
     borderRadius: 12,
@@ -579,6 +596,9 @@ const styles = StyleSheet.create({
   },
   switch: {
     transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }],
+  },
+  spacer: {
+    flex: 1,
   },
   sensorSection: {
     marginTop: 12,
@@ -637,6 +657,154 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666666',
     fontStyle: 'italic',
+  },
+  deleteButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#FFEBEE',
+  },
+  deleteIcon: {
+    fontSize: 16,
+    color: '#F44336',
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    margin: 20,
+    maxWidth: 320,
+    width: '90%',
+  },
+  deleteModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  deleteModalMessage: {
+    fontSize: 16,
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  deleteModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666666',
+  },
+  confirmDeleteButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#F44336',
+    alignItems: 'center',
+  },
+  confirmDeleteButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  searchContainer: {
+    marginTop: 12,
+  },
+  searchInput: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#333333',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  bulkActionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 8,
+  },
+  selectionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: '#5B934E',
+  },
+  selectionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  selectAllButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: '#E8F5E8',
+  },
+  selectAllButtonText: {
+    color: '#467933',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  bulkDeleteButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: '#F44336',
+  },
+  bulkDeleteButtonDisabled: {
+    backgroundColor: '#CCCCCC',
+  },
+  bulkDeleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  bulkDeleteButtonTextDisabled: {
+    color: '#999999',
+  },
+  checkbox: {
+    marginRight: 12,
+  },
+  checkboxInner: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#CCCCCC',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxSelected: {
+    backgroundColor: '#5B934E',
+    borderColor: '#5B934E',
+  },
+  checkboxText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

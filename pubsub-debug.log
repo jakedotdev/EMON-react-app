@@ -1,0 +1,34 @@
+
+D:\EMON_REACT>if "Windows_NT" == "Windows_NT" setlocal
+
+D:\EMON_REACT>set DIRNAME=C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\bin\ 
+
+D:\EMON_REACT>if "C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\bin\" == "" set DIRNAME=. 
+
+D:\EMON_REACT>set APP_BASE_NAME=cloud-pubsub-emulator 
+
+D:\EMON_REACT>set APP_HOME=C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\bin\.. 
+
+D:\EMON_REACT>set DEFAULT_JVM_OPTS= 
+
+D:\EMON_REACT>if defined JAVA_HOME goto findJavaFromJavaHome 
+
+D:\EMON_REACT>set JAVA_HOME=C:\Program Files\Java\jdk-21 
+
+D:\EMON_REACT>set JAVA_EXE=C:\Program Files\Java\jdk-21/bin/java.exe 
+
+D:\EMON_REACT>if exist "C:\Program Files\Java\jdk-21/bin/java.exe" goto init 
+
+D:\EMON_REACT>if not "Windows_NT" == "Windows_NT" goto win9xME_args 
+
+D:\EMON_REACT>set CMD_LINE_ARGS= 
+
+D:\EMON_REACT>set _SKIP=2 
+
+D:\EMON_REACT>if "x--host" == "x" goto execute 
+
+D:\EMON_REACT>set CMD_LINE_ARGS=--host=127.0.0.1 --port=8085 
+
+D:\EMON_REACT>set CLASSPATH=C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\bin\..\lib\cloud-pubsub-emulator-0.8.14-all.jar 
+
+D:\EMON_REACT>"C:\Program Files\Java\jdk-21/bin/java.exe"     -jar "C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\bin\..\lib\cloud-pubsub-emulator-0.8.14-all.jar" --host=127.0.0.1 --port=8085 

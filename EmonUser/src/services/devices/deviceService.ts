@@ -1,5 +1,5 @@
-import { getFirestore, collection, doc, getDocs, getDoc, setDoc, updateDoc, query, where, onSnapshot } from 'firebase/firestore';
-import { getDatabase, ref, onValue, off } from 'firebase/database';
+import { getFirestore, collection, doc, getDocs, getDoc, setDoc, updateDoc, query, where, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { getDatabase, ref, onValue, off, get } from 'firebase/database';
 import { Device, DeviceRegistration, ApplianceRegistration } from '../../models/Device';
 
 class DeviceService {
@@ -57,51 +57,39 @@ class DeviceService {
         // Try searching at root level
         const rootRef = ref(this.rtdb);
         unsubscribe = onValue(rootRef, (snapshot) => {
-          const rootData = snapshot.val();
-          console.log('Root level data:', rootData);
-          
-          if (rootData) {
-            // Search recursively through all data
-            const findDeviceInData = (data: any, path: string = ''): any => {
-              if (!data || typeof data !== 'object') return null;
-              
-              // Check if this object has the serialNumber we're looking for
-              if (data.serialNumber === serialNumber) {
-                console.log(`Found device at path: ${path}`, data);
-                return data;
+          try {
+            const rootData = snapshot.val();
+            console.log('Root level data:', rootData);
+            if (rootData) {
+              const findDeviceInData = (data: any, path: string = ''): any => {
+                if (!data || typeof data !== 'object') return null;
+                if (data.serialNumber === serialNumber) {
+                  console.log(`Found device at path: ${path}`, data);
+                  return data;
+                }
+                for (const key in data) {
+                  const result = findDeviceInData(data[key], `${path}/${key}`);
+                  if (result) return result;
+                }
+                return null;
+              };
+              const foundDevice = findDeviceInData(rootData);
+              if (foundDevice) {
+                const applianceState = foundDevice.applianceState || false;
+                const hasRecentData = foundDevice.timestamp ? (Date.now() - foundDevice.timestamp) < 30000 : false;
+                const isConnected = applianceState || hasRecentData;
+                console.log(`Device ${serialNumber} found at root level:`, { applianceState, hasRecentData, isConnected, foundDevice });
+                try { callback(isConnected, applianceState); } catch (cbErr) { console.error('callback error:', cbErr); }
+              } else {
+                console.log(`Device ${serialNumber} not found anywhere in Realtime Database`);
+                try { callback(false, false); } catch {}
               }
-              
-              // Search through all properties
-              for (const key in data) {
-                const result = findDeviceInData(data[key], `${path}/${key}`);
-                if (result) return result;
-              }
-              
-              return null;
-            };
-            
-            const foundDevice = findDeviceInData(rootData);
-            
-            if (foundDevice) {
-              const applianceState = foundDevice.applianceState || false;
-              const hasRecentData = foundDevice.timestamp ? (Date.now() - foundDevice.timestamp) < 30000 : false;
-              const isConnected = applianceState || hasRecentData;
-              
-              console.log(`Device ${serialNumber} found at root level:`, {
-                applianceState,
-                hasRecentData,
-                isConnected,
-                foundDevice
-              });
-              
-              callback(isConnected, applianceState);
             } else {
-              console.log(`Device ${serialNumber} not found anywhere in Realtime Database`);
-              callback(false, false);
+              console.log('No data found at root level');
+              try { callback(false, false); } catch {}
             }
-          } else {
-            console.log('No data found at root level');
-            callback(false, false);
+          } catch (handlerErr) {
+            console.error('Error handling root snapshot:', handlerErr);
           }
         });
         
@@ -112,39 +100,37 @@ class DeviceService {
       const allSensorReadingsRef = ref(this.rtdb, path);
       
       unsubscribe = onValue(allSensorReadingsRef, (snapshot) => {
-        const allData = snapshot.val();
-        console.log(`Checking path '${path}':`, allData);
-        
-        if (allData) {
-          // Search through all sensorReadings for the device with matching serialNumber
-          let foundDevice = null;
-          Object.keys(allData).forEach(key => {
-            const deviceData = allData[key];
-            if (deviceData && deviceData.serialNumber === serialNumber) {
-              foundDevice = deviceData;
-            }
-          });
-          
-          if (foundDevice) {
-            const applianceState = foundDevice.applianceState || false;
-            const hasRecentData = foundDevice.timestamp ? (Date.now() - foundDevice.timestamp) < 30000 : false;
-            const isConnected = applianceState || hasRecentData;
-            
-            console.log(`Device ${serialNumber} connection status:`, {
-              applianceState,
-              hasRecentData,
-              isConnected,
-              foundDevice
+        try {
+          const allData = snapshot.val();
+          console.log(`Checking path '${path}':`, allData);
+          if (allData) {
+            let foundDevice: any = null;
+            Object.keys(allData).forEach(key => {
+              try {
+                const deviceData = allData[key];
+                if (deviceData && deviceData.serialNumber === serialNumber) {
+                  foundDevice = deviceData;
+                }
+              } catch (childErr) {
+                console.warn('Error processing device data:', childErr);
+              }
             });
-            
-            callback(isConnected, applianceState);
+            if (foundDevice) {
+              const applianceState = foundDevice.applianceState || false;
+              const hasRecentData = foundDevice.timestamp ? (Date.now() - foundDevice.timestamp) < 30000 : false;
+              const isConnected = applianceState || hasRecentData;
+              console.log(`Device ${serialNumber} connection status:`, { applianceState, hasRecentData, isConnected, foundDevice });
+              try { callback(isConnected, applianceState); } catch (cbErr) { console.error('callback error:', cbErr); }
+            } else {
+              console.log(`Device ${serialNumber} not found in ${path}, trying next path...`);
+              tryPath(pathIndex + 1);
+            }
           } else {
-            console.log(`Device ${serialNumber} not found in ${path}, trying next path...`);
+            console.log(`No data found in ${path}, trying next path...`);
             tryPath(pathIndex + 1);
           }
-        } else {
-          console.log(`No data found in ${path}, trying next path...`);
-          tryPath(pathIndex + 1);
+        } catch (handlerErr) {
+          console.error('Error handling path snapshot:', handlerErr);
         }
       });
     };
@@ -259,7 +245,7 @@ class DeviceService {
       const appliancesRef = collection(this.db, 'appliances');
       const q = query(appliancesRef, where('deviceId', '==', deviceId));
       const querySnapshot = await getDocs(q);
-      
+
       const appliances: any[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
@@ -269,10 +255,62 @@ class DeviceService {
           createdAt: data.createdAt?.toDate() || new Date(),
         });
       });
-      
+
       return appliances;
     } catch (error) {
       console.error('Error fetching appliances by device:', error);
+      throw error;
+    }
+  }
+
+  // Delete user appliance
+  async deleteUserAppliance(userId: string, applianceId: string): Promise<void> {
+    try {
+      const applianceRef = doc(this.db, 'appliances', applianceId);
+
+      // First verify the appliance belongs to the user
+      const applianceDoc = await getDoc(applianceRef);
+      if (!applianceDoc.exists()) {
+        throw new Error('Appliance not found');
+      }
+
+      const applianceData = applianceDoc.data();
+      if (applianceData.userId !== userId) {
+        throw new Error('Unauthorized: Appliance does not belong to this user');
+      }
+
+      // Delete the appliance
+      await deleteDoc(applianceRef);
+      console.log(`Appliance ${applianceId} deleted successfully`);
+    } catch (error) {
+      console.error('Error deleting appliance:', error);
+      throw error;
+    }
+  }
+
+  // Get user's available devices (devices without appliances registered)
+  async getUserAvailableDevices(userId: string): Promise<Device[]> {
+    try {
+      // Get all user devices
+      const allUserDevices = await this.getUserDevices(userId);
+
+      // Get all user appliances to find which devices are already used
+      const userAppliances = await this.getUserAppliances(userId);
+      const usedDeviceIds = new Set(userAppliances.map(appliance => appliance.deviceId));
+
+      // Filter out devices that already have appliances
+      const availableDevices = allUserDevices.filter(device => !usedDeviceIds.has(device.id));
+
+      console.log('Available devices for registration:', {
+        totalDevices: allUserDevices.length,
+        usedDevices: usedDeviceIds.size,
+        availableDevices: availableDevices.length,
+        availableDeviceIds: availableDevices.map(d => d.id)
+      });
+
+      return availableDevices;
+    } catch (error) {
+      console.error('Error fetching available devices:', error);
       throw error;
     }
   }
@@ -281,13 +319,9 @@ class DeviceService {
   async debugRealtimeDatabase() {
     try {
       const rootRef = ref(this.rtdb);
-      const snapshot = await new Promise((resolve) => {
-        onValue(rootRef, (snapshot) => {
-          resolve(snapshot.val());
-        }, { onlyOnce: true });
-      });
-      
-      console.log('Realtime Database structure:', snapshot);
+      const rootSnap = await get(rootRef);
+      const rootVal = rootSnap.val();
+      console.log('Realtime Database structure:', rootVal);
       
       // Also try to check specific paths that might contain sensor data
       const possiblePaths = ['sensorReadings', 'SensorReadings', 'sensor_readings', 'Sensor_Readings', 'devices', 'Devices'];
@@ -295,21 +329,16 @@ class DeviceService {
       for (const path of possiblePaths) {
         try {
           const pathRef = ref(this.rtdb, path);
-          const pathSnapshot = await new Promise((resolve) => {
-            onValue(pathRef, (snapshot) => {
-              resolve(snapshot.val());
-            }, { onlyOnce: true });
-          });
-          
-          if (pathSnapshot) {
-            console.log(`Path '${path}' contains:`, pathSnapshot);
+          const pathSnap = await get(pathRef);
+          const pathVal = pathSnap.val();
+          if (pathVal) {
+            console.log(`Path '${path}' contains:`, pathVal);
           }
         } catch (error) {
           console.log(`Path '${path}' not accessible`);
         }
       }
-      
-      return snapshot;
+      return rootVal;
     } catch (error) {
       console.error('Error debugging Realtime Database:', error);
     }

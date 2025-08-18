@@ -1,11 +1,11 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet } from 'react-native';
-import DashboardScreen from '../screens/dashboard/DashboardScreen';
+import DashboardStackNavigator from './DashboardStackNavigator';
 import AppliancesScreen from '../screens/appliances/AppliancesScreen';
-import AnalyticsScreen from '../screens/analytics/AnalyticsScreen';
+import AnalyticsScreenRefactored from '../screens/analytics/AnalyticsScreenRefactored';
 import ProfileScreen from '../screens/profile/ProfileScreen';
-import SettingsScreen from '../screens/settings/SettingsScreen';
+import SettingsStackNavigator from './SettingsStackNavigator';
 
 const Tab = createBottomTabNavigator();
 
@@ -24,14 +24,12 @@ const MainTabNavigator = () => (
       tabBarActiveTintColor: '#5B934E',
       tabBarInactiveTintColor: '#9CC39C',
       tabBarStyle: styles.tabBar,
-      headerStyle: styles.header,
-      headerTintColor: '#FFFFFF',
-      headerTitleStyle: styles.headerTitle,
+      headerShown: false,
     }}
   >
     <Tab.Screen 
       name="Dashboard" 
-      component={DashboardScreen}
+      component={DashboardStackNavigator}
       options={{
         tabBarIcon: ({ focused }) => <TabIcon name="Dashboard" focused={focused} />,
       }}
@@ -45,7 +43,7 @@ const MainTabNavigator = () => (
     />
     <Tab.Screen 
       name="Analytics" 
-      component={AnalyticsScreen}
+      component={AnalyticsScreenRefactored}
       options={{
         tabBarIcon: ({ focused }) => <TabIcon name="Analytics" focused={focused} />,
       }}
@@ -59,7 +57,7 @@ const MainTabNavigator = () => (
     />
     <Tab.Screen 
       name="Settings" 
-      component={SettingsScreen}
+      component={SettingsStackNavigator}
       options={{
         tabBarIcon: ({ focused }) => <TabIcon name="Settings" focused={focused} />,
       }}
@@ -76,13 +74,7 @@ const styles = StyleSheet.create({
     paddingTop: 5,
     height: 60,
   },
-  header: {
-    backgroundColor: '#5B934E',
-  },
-  headerTitle: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
+
   tabIcon: {
     width: 24,
     height: 24,

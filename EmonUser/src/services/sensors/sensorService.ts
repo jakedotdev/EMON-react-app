@@ -1,4 +1,4 @@
-import { ref, onValue, DataSnapshot, update } from 'firebase/database';
+import { ref, onValue, DataSnapshot, update, get } from 'firebase/database';
 import { database } from '../firebase/firebaseConfig';
 import { SensorReading, SensorReadingModel } from '../../models/SensorReading';
 
@@ -11,18 +11,34 @@ export class SensorService {
     const path = sensorId === '1' ? 'SensorReadings' : `SensorReadings_${sensorId}`;
     const sensorRef = ref(database, path);
     
-    const unsubscribe = onValue(sensorRef, (snapshot: DataSnapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val() as SensorReading;
-        const sensorReading = new SensorReadingModel(data);
-        callback(sensorReading);
-      } else {
-        callback(null);
+    const unsubscribe = onValue(
+      sensorRef,
+      (snapshot: DataSnapshot) => {
+        try {
+          if (snapshot.exists()) {
+            const data = snapshot.val() as SensorReading;
+            const sensorReading = new SensorReadingModel(data);
+            try {
+              callback(sensorReading);
+            } catch (cbErr) {
+              console.error('Sensor callback error:', cbErr);
+            }
+          } else {
+            try {
+              callback(null);
+            } catch (cbErr) {
+              console.error('Sensor callback error (null):', cbErr);
+            }
+          }
+        } catch (handlerErr) {
+          console.error('Error handling sensor snapshot:', handlerErr);
+        }
+      },
+      (error) => {
+        console.error('Error listening to sensor:', error);
+        try { callback(null); } catch {}
       }
-    }, (error) => {
-      console.error('Error listening to sensor:', error);
-      callback(null);
-    });
+    );
 
     this.listeners[sensorId] = unsubscribe;
     return unsubscribe;
@@ -32,33 +48,41 @@ export class SensorService {
   listenToAllSensors(callback: (sensors: { [key: string]: SensorReadingModel }) => void): () => void {
     const sensorsRef = ref(database, '/');
     
-    const unsubscribe = onValue(sensorsRef, (snapshot: DataSnapshot) => {
-      const sensors: { [key: string]: SensorReadingModel } = {};
-      
-      snapshot.forEach((childSnapshot) => {
-        const sensorId = childSnapshot.key;
-        if (sensorId) {
-          let mappedId: string;
-          
-          // Map the Firebase keys to our internal IDs
-          if (sensorId === 'SensorReadings') {
-            mappedId = 'SensorReadings_1'; // Map to our internal ID
-          } else if (sensorId.startsWith('SensorReadings_')) {
-            mappedId = sensorId; // Keep as is
-          } else {
-            return; // Skip other nodes
-          }
-          
-          const data = childSnapshot.val() as SensorReading;
-          sensors[mappedId] = new SensorReadingModel(data);
+    const unsubscribe = onValue(
+      sensorsRef,
+      (snapshot: DataSnapshot) => {
+        try {
+          const sensors: { [key: string]: SensorReadingModel } = {};
+          snapshot.forEach((childSnapshot) => {
+            try {
+              const sensorId = childSnapshot.key;
+              if (sensorId) {
+                let mappedId: string;
+                // Map the Firebase keys to our internal IDs
+                if (sensorId === 'SensorReadings') {
+                  mappedId = 'SensorReadings_1';
+                } else if (sensorId.startsWith('SensorReadings_')) {
+                  mappedId = sensorId;
+                } else {
+                  return; // Skip other nodes
+                }
+                const data = childSnapshot.val() as SensorReading;
+                sensors[mappedId] = new SensorReadingModel(data);
+              }
+            } catch (childErr) {
+              console.warn('Error processing child snapshot:', childErr);
+            }
+          });
+          try { callback(sensors); } catch (cbErr) { console.error('All sensors callback error:', cbErr); }
+        } catch (handlerErr) {
+          console.error('Error handling all sensors snapshot:', handlerErr);
         }
-      });
-      
-      callback(sensors);
-    }, (error) => {
-      console.error('Error listening to all sensors:', error);
-      callback({});
-    });
+      },
+      (error) => {
+        console.error('Error listening to all sensors:', error);
+        try { callback({}); } catch {}
+      }
+    );
 
     return unsubscribe;
   }
@@ -92,14 +116,12 @@ export class SensorService {
 
       console.log(`Successfully updated appliance state for sensor ${sensorId} to ${applianceState}`);
 
-      // Verify the update by reading the value back
+      // Verify the update by reading the value back (use get to avoid callback rethrow issues)
       setTimeout(async () => {
         try {
-          const snapshot = await new Promise<DataSnapshot>((resolve, reject) => {
-            onValue(sensorRef, resolve, reject, { onlyOnce: true });
-          });
-          if (snapshot.exists()) {
-            const data = snapshot.val();
+          const snap = await get(sensorRef);
+          if (snap.exists()) {
+            const data = snap.val();
             console.log(`Verification: appliance state is now ${data.applianceState} at path ${path}`);
           }
         } catch (verifyError) {
@@ -117,13 +139,9 @@ export class SensorService {
   // Get sensor data once (not real-time)
   async getSensorData(sensorId: string): Promise<SensorReadingModel | null> {
     try {
-      // Handle the special case where the first sensor is just 'SensorReadings'
       const path = sensorId === '1' ? 'SensorReadings' : `SensorReadings_${sensorId}`;
       const sensorRef = ref(database, path);
-      const snapshot = await new Promise<DataSnapshot>((resolve, reject) => {
-        onValue(sensorRef, resolve, reject, { onlyOnce: true });
-      });
-      
+      const snapshot = await get(sensorRef);
       if (snapshot.exists()) {
         const data = snapshot.val() as SensorReading;
         return new SensorReadingModel(data);
@@ -139,31 +157,27 @@ export class SensorService {
   async getAllSensorData(): Promise<{ [key: string]: SensorReadingModel }> {
     try {
       const sensorsRef = ref(database, '/');
-      const snapshot = await new Promise<DataSnapshot>((resolve, reject) => {
-        onValue(sensorsRef, resolve, reject, { onlyOnce: true });
-      });
-      
+      const snapshot = await get(sensorsRef);
       const sensors: { [key: string]: SensorReadingModel } = {};
-      
       snapshot.forEach((childSnapshot) => {
-        const sensorId = childSnapshot.key;
-        if (sensorId) {
-          let mappedId: string;
-          
-          // Map the Firebase keys to our internal IDs
-          if (sensorId === 'SensorReadings') {
-            mappedId = 'SensorReadings_1'; // Map to our internal ID
-          } else if (sensorId.startsWith('SensorReadings_')) {
-            mappedId = sensorId; // Keep as is
-          } else {
-            return; // Skip other nodes
+        try {
+          const sensorId = childSnapshot.key;
+          if (sensorId) {
+            let mappedId: string;
+            if (sensorId === 'SensorReadings') {
+              mappedId = 'SensorReadings_1';
+            } else if (sensorId.startsWith('SensorReadings_')) {
+              mappedId = sensorId;
+            } else {
+              return; // Skip other nodes
+            }
+            const data = childSnapshot.val() as SensorReading;
+            sensors[mappedId] = new SensorReadingModel(data);
           }
-          
-          const data = childSnapshot.val() as SensorReading;
-          sensors[mappedId] = new SensorReadingModel(data);
+        } catch (childErr) {
+          console.warn('Error processing child snapshot (all):', childErr);
         }
       });
-      
       return sensors;
     } catch (error) {
       console.error('Error getting all sensor data:', error);

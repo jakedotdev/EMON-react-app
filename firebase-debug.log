@@ -1,0 +1,552 @@
+[debug] [2025-08-15T00:47:13.113Z] ----------------------------------------------------------------------
+[debug] [2025-08-15T00:47:13.115Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\jakec\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --debug
+[debug] [2025-08-15T00:47:13.116Z] CLI Version:   14.12.1
+[debug] [2025-08-15T00:47:13.116Z] Platform:      win32
+[debug] [2025-08-15T00:47:13.116Z] Node Version:  v22.17.1
+[debug] [2025-08-15T00:47:13.116Z] Time:          Fri Aug 15 2025 08:47:13 GMT+0800 (Philippine Standard Time)
+[debug] [2025-08-15T00:47:13.116Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-08-15T00:47:13.373Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-08-15T00:47:13.374Z] > authorizing via signed-in user (jakecasundo15@gmail.com)
+[debug] [2025-08-15T00:47:14.684Z] java version "21.0.8" 2025-07-15 LTS
+
+[debug] [2025-08-15T00:47:14.684Z] Java(TM) SE Runtime Environment (build 21.0.8+12-LTS-250)
+Java HotSpot(TM) 64-Bit Server VM (build 21.0.8+12-LTS-250, mixed mode, sharing)
+
+[debug] [2025-08-15T00:47:14.724Z] Parsed Java major version: 21
+[info] i  emulators: Starting emulators: functions, firestore, database, pubsub, extensions {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: functions, firestore, database, pubsub, extensions"}}
+[debug] [2025-08-15T00:47:14.727Z] Checked if tokens are valid: true, expires at: 1755221989426
+[debug] [2025-08-15T00:47:14.727Z] Checked if tokens are valid: true, expires at: 1755221989426
+[debug] [2025-08-15T00:47:14.728Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/emoniot-fb5ce/services/cloudresourcemanager.googleapis.com [none]
+[debug] [2025-08-15T00:47:14.729Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/emoniot-fb5ce/services/cloudresourcemanager.googleapis.com x-goog-quota-user=projects/emoniot-fb5ce
+[debug] [2025-08-15T00:47:16.027Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/emoniot-fb5ce/services/cloudresourcemanager.googleapis.com 200
+[debug] [2025-08-15T00:47:16.027Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/emoniot-fb5ce/services/cloudresourcemanager.googleapis.com [omitted]
+[debug] [2025-08-15T00:47:16.031Z] Checked if tokens are valid: true, expires at: 1755221989426
+[debug] [2025-08-15T00:47:16.031Z] Checked if tokens are valid: true, expires at: 1755221989426
+[debug] [2025-08-15T00:47:16.031Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/emoniot-fb5ce [none]
+[debug] [2025-08-15T00:47:16.968Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/emoniot-fb5ce 200
+[debug] [2025-08-15T00:47:16.968Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/emoniot-fb5ce {"projectNumber":"434793832350","projectId":"emoniot-fb5ce","lifecycleState":"ACTIVE","name":"EmonIOT","labels":{"firebase":"enabled"},"createTime":"2024-10-09T11:41:51.810285Z"}
+[debug] [2025-08-15T00:47:16.988Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-08-15T00:47:16.989Z] [firestore] Firestore Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-08-15T00:47:16.989Z] [firestore.websocket] websocket server for firestore only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-08-15T00:47:16.989Z] [database] Database Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-08-15T00:47:16.990Z] [pubsub] Pub/Sub Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-08-15T00:47:16.990Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"firestore":[{"address":"127.0.0.1","family":"IPv4","port":8080}],"firestore.websocket":[{"address":"127.0.0.1","family":"IPv4","port":9150}],"database":[{"address":"127.0.0.1","family":"IPv4","port":9000}],"pubsub":[{"address":"127.0.0.1","family":"IPv4","port":8085}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2025-08-15T00:47:16.999Z] [hub] writing locator at C:\Users\jakec\AppData\Local\Temp\hub-emoniot-fb5ce.json
+[debug] [2025-08-15T00:47:17.012Z] [Extensions] Started Extensions emulator, this is a noop.
+[debug] [2025-08-15T00:47:17.019Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-08-15T00:47:17.019Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-08-15T00:47:17.020Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-08-15T00:47:17.020Z] late-assigned ports for functions and eventarc emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"firestore":[{"address":"127.0.0.1","family":"IPv4","port":8080}],"firestore.websocket":[{"address":"127.0.0.1","family":"IPv4","port":9150}],"database":[{"address":"127.0.0.1","family":"IPv4","port":9000}],"pubsub":[{"address":"127.0.0.1","family":"IPv4","port":8085}],"functions":[{"address":"127.0.0.1","family":"IPv4","port":5001}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
+[warn] !  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, auth, hosting, storage, dataconnect {"metadata":{"emulator":{"name":"functions"},"message":"The following emulators are not running, calls to these services from the Functions emulator will affect production: \u001b[1mapphosting, auth, hosting, storage, dataconnect\u001b[22m"}}
+[debug] [2025-08-15T00:47:17.065Z] defaultcredentials: writing to file C:\Users\jakec\AppData\Roaming\firebase\jakecasundo15_gmail_com_application_default_credentials.json
+[debug] [2025-08-15T00:47:17.067Z] Setting GAC to C:\Users\jakec\AppData\Roaming\firebase\jakecasundo15_gmail_com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to C:\\Users\\jakec\\AppData\\Roaming\\firebase\\jakecasundo15_gmail_com_application_default_credentials.json"}}
+[debug] [2025-08-15T00:47:17.068Z] Checked if tokens are valid: true, expires at: 1755221989426
+[debug] [2025-08-15T00:47:17.068Z] Checked if tokens are valid: true, expires at: 1755221989426
+[debug] [2025-08-15T00:47:17.068Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/emoniot-fb5ce/adminSdkConfig [none]
+[debug] [2025-08-15T00:47:17.410Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/emoniot-fb5ce/adminSdkConfig 200
+[debug] [2025-08-15T00:47:17.410Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/emoniot-fb5ce/adminSdkConfig {"projectId":"emoniot-fb5ce","databaseURL":"https://emoniot-fb5ce-default-rtdb.asia-southeast1.firebasedatabase.app","storageBucket":"emoniot-fb5ce.firebasestorage.app"}
+[info] i  firestore: downloading cloud-firestore-emulator-v1.19.8.jar... {"metadata":{"emulator":{"name":"firestore"},"message":"downloading cloud-firestore-emulator-v1.19.8.jar..."}}
+[debug] [2025-08-15T00:47:17.429Z] >>> [apiv2][query] GET https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.19.8.jar 
+[debug] [2025-08-15T00:47:17.741Z] <<< [apiv2][status] GET https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.19.8.jar 200
+[debug] [2025-08-15T00:47:17.742Z] <<< [apiv2][body] GET https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.19.8.jar [stream]
+[debug] [2025-08-15T00:47:25.851Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"firestore"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-08-15T00:47:25.851Z] Ignoring unsupported arg: single_project_mode_error {"metadata":{"emulator":{"name":"firestore"},"message":"Ignoring unsupported arg: single_project_mode_error"}}
+[debug] [2025-08-15T00:47:25.851Z] Starting Firestore Emulator with command {"binary":"java","args":["-Dgoogle.cloud_firestore.debug_log_level=FINE","-Duser.language=en","-jar","C:\\Users\\jakec\\.cache\\firebase\\emulators\\cloud-firestore-emulator-v1.19.8.jar","--host","127.0.0.1","--port",8080,"--websocket_port",9150,"--project_id","emoniot-fb5ce","--rules","D:\\EMON_REACT\\firestore.rules","--single_project_mode",true,"--functions_emulator","127.0.0.1:5001"],"optionalArgs":["port","webchannel_port","host","rules","websocket_port","functions_emulator","seed_from_export","project_id","single_project_mode"],"joinArgs":false,"shell":false,"port":8080} {"metadata":{"emulator":{"name":"firestore"},"message":"Starting Firestore Emulator with command {\"binary\":\"java\",\"args\":[\"-Dgoogle.cloud_firestore.debug_log_level=FINE\",\"-Duser.language=en\",\"-jar\",\"C:\\\\Users\\\\jakec\\\\.cache\\\\firebase\\\\emulators\\\\cloud-firestore-emulator-v1.19.8.jar\",\"--host\",\"127.0.0.1\",\"--port\",8080,\"--websocket_port\",9150,\"--project_id\",\"emoniot-fb5ce\",\"--rules\",\"D:\\\\EMON_REACT\\\\firestore.rules\",\"--single_project_mode\",true,\"--functions_emulator\",\"127.0.0.1:5001\"],\"optionalArgs\":[\"port\",\"webchannel_port\",\"host\",\"rules\",\"websocket_port\",\"functions_emulator\",\"seed_from_export\",\"project_id\",\"single_project_mode\"],\"joinArgs\":false,\"shell\":false,\"port\":8080}"}}
+[info] i  firestore: Firestore Emulator logging to firestore-debug.log {"metadata":{"emulator":{"name":"firestore"},"message":"Firestore Emulator logging to \u001b[1mfirestore-debug.log\u001b[22m"}}
+[info] +  firestore: Firestore Emulator UI websocket is running on 9150. {"metadata":{"emulator":{"name":"firestore"},"message":"Firestore Emulator UI websocket is running on 9150."}}
+[debug] [2025-08-15T00:47:31.194Z] Checked if tokens are valid: true, expires at: 1755221989426
+[debug] [2025-08-15T00:47:31.195Z] Checked if tokens are valid: true, expires at: 1755221989426
+[debug] [2025-08-15T00:47:31.196Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/emoniot-fb5ce [none]
+[debug] [2025-08-15T00:47:31.483Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/emoniot-fb5ce 200
+[debug] [2025-08-15T00:47:31.484Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/emoniot-fb5ce {"projectId":"emoniot-fb5ce","projectNumber":"434793832350","displayName":"EmonIOT","name":"projects/emoniot-fb5ce","resources":{"hostingSite":"emoniot-fb5ce","realtimeDatabaseInstance":"emoniot-fb5ce-default-rtdb"},"state":"ACTIVE","etag":"1_d7538595-5d41-4c10-bf1a-27ea6dc79b09"}
+[debug] [2025-08-15T00:47:31.484Z] database rules config:  [{"instance":"emoniot-fb5ce-default-rtdb","rules":"D:\\EMON_REACT\\database.rules.json"}]
+[info] i  database: downloading firebase-database-emulator-v4.11.2.jar... {"metadata":{"emulator":{"name":"database"},"message":"downloading firebase-database-emulator-v4.11.2.jar..."}}
+[debug] [2025-08-15T00:47:31.489Z] >>> [apiv2][query] GET https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.11.2.jar 
+[debug] [2025-08-15T00:47:31.763Z] <<< [apiv2][status] GET https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.11.2.jar 200
+[debug] [2025-08-15T00:47:31.764Z] <<< [apiv2][body] GET https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.11.2.jar [stream]
+[debug] [2025-08-15T00:47:35.405Z] Ignoring unsupported arg: projectId {"metadata":{"emulator":{"name":"database"},"message":"Ignoring unsupported arg: projectId"}}
+[debug] [2025-08-15T00:47:35.405Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"database"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-08-15T00:47:35.406Z] Ignoring unsupported arg: rules {"metadata":{"emulator":{"name":"database"},"message":"Ignoring unsupported arg: rules"}}
+[debug] [2025-08-15T00:47:35.406Z] Starting Database Emulator with command {"binary":"java","args":["-Duser.language=en","-jar","C:\\Users\\jakec\\.cache\\firebase\\emulators\\firebase-database-emulator-v4.11.2.jar","--host","127.0.0.1","--port",9000,"--single_project_mode","Warning","--functions_emulator_host","127.0.0.1","--functions_emulator_port",5001],"optionalArgs":["port","host","functions_emulator_port","functions_emulator_host","single_project_mode"],"joinArgs":false,"shell":false,"port":9000} {"metadata":{"emulator":{"name":"database"},"message":"Starting Database Emulator with command {\"binary\":\"java\",\"args\":[\"-Duser.language=en\",\"-jar\",\"C:\\\\Users\\\\jakec\\\\.cache\\\\firebase\\\\emulators\\\\firebase-database-emulator-v4.11.2.jar\",\"--host\",\"127.0.0.1\",\"--port\",9000,\"--single_project_mode\",\"Warning\",\"--functions_emulator_host\",\"127.0.0.1\",\"--functions_emulator_port\",5001],\"optionalArgs\":[\"port\",\"host\",\"functions_emulator_port\",\"functions_emulator_host\",\"single_project_mode\"],\"joinArgs\":false,\"shell\":false,\"port\":9000}"}}
+[info] i  database: Database Emulator logging to database-debug.log {"metadata":{"emulator":{"name":"database"},"message":"Database Emulator logging to \u001b[1mdatabase-debug.log\u001b[22m"}}
+[info] i  pubsub: downloading pubsub-emulator-0.8.14.zip... {"metadata":{"emulator":{"name":"pubsub"},"message":"downloading pubsub-emulator-0.8.14.zip..."}}
+[debug] [2025-08-15T00:47:40.040Z] >>> [apiv2][query] GET https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-0.8.14.zip 
+[debug] [2025-08-15T00:47:40.258Z] <<< [apiv2][status] GET https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-0.8.14.zip 200
+[debug] [2025-08-15T00:47:40.258Z] <<< [apiv2][body] GET https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-0.8.14.zip [stream]
+[debug] [2025-08-15T00:47:47.397Z] Data is 66786933
+[debug] [2025-08-15T00:47:47.502Z] [unzip] Entry: pubsub-emulator/ (compressed_size=2 bytes, uncompressed_size=0 bytes)
+[debug] [2025-08-15T00:47:47.503Z] [unzip] Processing entry: pubsub-emulator\
+[debug] [2025-08-15T00:47:47.503Z] [unzip] mkdir: C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\
+[debug] [2025-08-15T00:47:47.525Z] [unzip] Entry: pubsub-emulator/lib/ (compressed_size=2 bytes, uncompressed_size=0 bytes)
+[debug] [2025-08-15T00:47:47.526Z] [unzip] Processing entry: pubsub-emulator\lib\
+[debug] [2025-08-15T00:47:47.527Z] [unzip] mkdir: C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\lib\
+[debug] [2025-08-15T00:47:47.529Z] [unzip] Entry: pubsub-emulator/lib/cloud-pubsub-emulator-0.8.14-all.jar (compressed_size=66782880 bytes, uncompressed_size=71655096 bytes)
+[debug] [2025-08-15T00:47:47.530Z] [unzip] Processing entry: pubsub-emulator\lib\cloud-pubsub-emulator-0.8.14-all.jar
+[debug] [2025-08-15T00:47:47.530Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\lib
+[debug] [2025-08-15T00:47:47.532Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\lib\cloud-pubsub-emulator-0.8.14-all.jar
+[debug] [2025-08-15T00:47:49.198Z] [unzip] Entry: pubsub-emulator/bin/ (compressed_size=2 bytes, uncompressed_size=0 bytes)
+[debug] [2025-08-15T00:47:49.199Z] [unzip] Processing entry: pubsub-emulator\bin\
+[debug] [2025-08-15T00:47:49.199Z] [unzip] mkdir: C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\bin\
+[debug] [2025-08-15T00:47:49.199Z] [unzip] Entry: pubsub-emulator/bin/cloud-pubsub-emulator.bat (compressed_size=889 bytes, uncompressed_size=2276 bytes)
+[debug] [2025-08-15T00:47:49.200Z] [unzip] Processing entry: pubsub-emulator\bin\cloud-pubsub-emulator.bat
+[debug] [2025-08-15T00:47:49.200Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\bin
+[debug] [2025-08-15T00:47:49.201Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\bin\cloud-pubsub-emulator.bat
+[debug] [2025-08-15T00:47:49.220Z] [unzip] Entry: pubsub-emulator/bin/cloud-pubsub-emulator (compressed_size=2284 bytes, uncompressed_size=5728 bytes)
+[debug] [2025-08-15T00:47:49.220Z] [unzip] Processing entry: pubsub-emulator\bin\cloud-pubsub-emulator
+[debug] [2025-08-15T00:47:49.220Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\bin
+[debug] [2025-08-15T00:47:49.221Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\bin\cloud-pubsub-emulator
+[debug] [2025-08-15T00:47:49.232Z] Ignoring unsupported arg: projectId {"metadata":{"emulator":{"name":"pubsub"},"message":"Ignoring unsupported arg: projectId"}}
+[debug] [2025-08-15T00:47:49.232Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"pubsub"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-08-15T00:47:49.233Z] Starting Pub/Sub Emulator with command {"binary":"C:\\Users\\jakec\\.cache\\firebase\\emulators\\pubsub-emulator-0.8.14\\pubsub-emulator\\bin\\cloud-pubsub-emulator","args":["--host=127.0.0.1","--port=8085"],"optionalArgs":["port","host"],"joinArgs":true,"shell":true,"port":8085} {"metadata":{"emulator":{"name":"pubsub"},"message":"Starting Pub/Sub Emulator with command {\"binary\":\"C:\\\\Users\\\\jakec\\\\.cache\\\\firebase\\\\emulators\\\\pubsub-emulator-0.8.14\\\\pubsub-emulator\\\\bin\\\\cloud-pubsub-emulator\",\"args\":[\"--host=127.0.0.1\",\"--port=8085\"],\"optionalArgs\":[\"port\",\"host\"],\"joinArgs\":true,\"shell\":true,\"port\":8085}"}}
+[info] i  pubsub: Pub/Sub Emulator logging to pubsub-debug.log {"metadata":{"emulator":{"name":"pubsub"},"message":"Pub/Sub Emulator logging to \u001b[1mpubsub-debug.log\u001b[22m"}}
+[debug] [2025-08-15T00:47:50.432Z] 
+D:\EMON_REACT>if "Windows_NT" == "Windows_NT" setlocal
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\nD:\\EMON_REACT>if \"Windows_NT\" == \"Windows_NT\" setlocal\r\n"}}
+[debug] [2025-08-15T00:47:50.433Z] 
+D:\EMON_REACT>set DIRNAME=C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\bin\ 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\nD:\\EMON_REACT>set DIRNAME=C:\\Users\\jakec\\.cache\\firebase\\emulators\\pubsub-emulator-0.8.14\\pubsub-emulator\\bin\\ \r\n"}}
+[debug] [2025-08-15T00:47:50.434Z] 
+D:\EMON_REACT>if "C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\bin\" == "" set DIRNAME=. 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\nD:\\EMON_REACT>if \"C:\\Users\\jakec\\.cache\\firebase\\emulators\\pubsub-emulator-0.8.14\\pubsub-emulator\\bin\\\" == \"\" set DIRNAME=. \r\n"}}
+[debug] [2025-08-15T00:47:50.434Z] 
+D:\EMON_REACT>set APP_BASE_NAME=cloud-pubsub-emulator 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\nD:\\EMON_REACT>set APP_BASE_NAME=cloud-pubsub-emulator \r\n"}}
+[debug] [2025-08-15T00:47:50.434Z] 
+D:\EMON_REACT>set APP_HOME=C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\bin\.. 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\nD:\\EMON_REACT>set APP_HOME=C:\\Users\\jakec\\.cache\\firebase\\emulators\\pubsub-emulator-0.8.14\\pubsub-emulator\\bin\\.. \r\n"}}
+[debug] [2025-08-15T00:47:50.435Z] 
+D:\EMON_REACT>set DEFAULT_JVM_OPTS= 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\nD:\\EMON_REACT>set DEFAULT_JVM_OPTS= \r\n"}}
+[debug] [2025-08-15T00:47:50.435Z] 
+D:\EMON_REACT>if defined JAVA_HOME goto findJavaFromJavaHome 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\nD:\\EMON_REACT>if defined JAVA_HOME goto findJavaFromJavaHome \r\n"}}
+[debug] [2025-08-15T00:47:50.436Z] 
+D:\EMON_REACT>set JAVA_HOME=C:\Program Files\Java\jdk-21 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\nD:\\EMON_REACT>set JAVA_HOME=C:\\Program Files\\Java\\jdk-21 \r\n"}}
+[debug] [2025-08-15T00:47:50.436Z] 
+D:\EMON_REACT>set JAVA_EXE=C:\Program Files\Java\jdk-21/bin/java.exe 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\nD:\\EMON_REACT>set JAVA_EXE=C:\\Program Files\\Java\\jdk-21/bin/java.exe \r\n"}}
+[debug] [2025-08-15T00:47:50.437Z] 
+D:\EMON_REACT>if exist "C:\Program Files\Java\jdk-21/bin/java.exe" goto init 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\nD:\\EMON_REACT>if exist \"C:\\Program Files\\Java\\jdk-21/bin/java.exe\" goto init \r\n"}}
+[debug] [2025-08-15T00:47:50.437Z] 
+D:\EMON_REACT>if not "Windows_NT" == "Windows_NT" goto win9xME_args 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\nD:\\EMON_REACT>if not \"Windows_NT\" == \"Windows_NT\" goto win9xME_args \r\n"}}
+[debug] [2025-08-15T00:47:50.437Z] 
+D:\EMON_REACT>set CMD_LINE_ARGS= 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\nD:\\EMON_REACT>set CMD_LINE_ARGS= \r\n"}}
+[debug] [2025-08-15T00:47:50.438Z] 
+D:\EMON_REACT>set _SKIP=2 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\nD:\\EMON_REACT>set _SKIP=2 \r\n"}}
+[debug] [2025-08-15T00:47:50.439Z] 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\n"}}
+[debug] [2025-08-15T00:47:50.440Z] D:\EMON_REACT>if "x--host" == "x" goto execute 
+
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"D:\\EMON_REACT>if \"x--host\" == \"x\" goto execute \r\n\r\n"}}
+[debug] [2025-08-15T00:47:50.440Z] D:\EMON_REACT>set CMD_LINE_ARGS=--host=127.0.0.1 --port=8085 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"D:\\EMON_REACT>set CMD_LINE_ARGS=--host=127.0.0.1 --port=8085 \r\n"}}
+[debug] [2025-08-15T00:47:50.441Z] 
+D:\EMON_REACT>set CLASSPATH=C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\bin\..\lib\cloud-pubsub-emulator-0.8.14-all.jar 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\nD:\\EMON_REACT>set CLASSPATH=C:\\Users\\jakec\\.cache\\firebase\\emulators\\pubsub-emulator-0.8.14\\pubsub-emulator\\bin\\..\\lib\\cloud-pubsub-emulator-0.8.14-all.jar \r\n"}}
+[debug] [2025-08-15T00:47:50.441Z] 
+D:\EMON_REACT>"C:\Program Files\Java\jdk-21/bin/java.exe"     -jar "C:\Users\jakec\.cache\firebase\emulators\pubsub-emulator-0.8.14\pubsub-emulator\bin\..\lib\cloud-pubsub-emulator-0.8.14-all.jar" --host=127.0.0.1 --port=8085 
+ {"metadata":{"emulator":{"name":"pubsub"},"message":"\r\nD:\\EMON_REACT>\"C:\\Program Files\\Java\\jdk-21/bin/java.exe\"     -jar \"C:\\Users\\jakec\\.cache\\firebase\\emulators\\pubsub-emulator-0.8.14\\pubsub-emulator\\bin\\..\\lib\\cloud-pubsub-emulator-0.8.14-all.jar\" --host=127.0.0.1 --port=8085 \r\n"}}
+[info] i  ui: downloading ui-v1.15.0.zip... {"metadata":{"emulator":{"name":"ui"},"message":"downloading ui-v1.15.0.zip..."}}
+[debug] [2025-08-15T00:47:52.110Z] >>> [apiv2][query] GET https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.15.0.zip 
+[debug] [2025-08-15T00:47:52.337Z] <<< [apiv2][status] GET https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.15.0.zip 200
+[debug] [2025-08-15T00:47:52.338Z] <<< [apiv2][body] GET https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.15.0.zip [stream]
+[debug] [2025-08-15T00:47:52.536Z] Data is 3538469
+[debug] [2025-08-15T00:47:52.537Z] [unzip] Entry: client/ (compressed_size=0 bytes, uncompressed_size=0 bytes)
+[debug] [2025-08-15T00:47:52.537Z] [unzip] Processing entry: client\
+[debug] [2025-08-15T00:47:52.537Z] [unzip] mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\
+[debug] [2025-08-15T00:47:52.539Z] [unzip] Entry: client/favicon-16x16.png (compressed_size=293 bytes, uncompressed_size=293 bytes)
+[debug] [2025-08-15T00:47:52.539Z] [unzip] Processing entry: client\favicon-16x16.png
+[debug] [2025-08-15T00:47:52.539Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client
+[debug] [2025-08-15T00:47:52.541Z] [unzip] Writing file: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\favicon-16x16.png
+[debug] [2025-08-15T00:47:52.544Z] [unzip] Entry: client/safari-pinned-tab.svg (compressed_size=1433 bytes, uncompressed_size=2611 bytes)
+[debug] [2025-08-15T00:47:52.545Z] [unzip] Processing entry: client\safari-pinned-tab.svg
+[debug] [2025-08-15T00:47:52.545Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client
+[debug] [2025-08-15T00:47:52.547Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\safari-pinned-tab.svg
+[debug] [2025-08-15T00:47:52.550Z] [unzip] Entry: client/favicon.ico (compressed_size=2933 bytes, uncompressed_size=13294 bytes)
+[debug] [2025-08-15T00:47:52.551Z] [unzip] Processing entry: client\favicon.ico
+[debug] [2025-08-15T00:47:52.551Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client
+[debug] [2025-08-15T00:47:52.553Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\favicon.ico
+[debug] [2025-08-15T00:47:52.566Z] [unzip] Entry: client/index.html (compressed_size=1364 bytes, uncompressed_size=3071 bytes)
+[debug] [2025-08-15T00:47:52.566Z] [unzip] Processing entry: client\index.html
+[debug] [2025-08-15T00:47:52.567Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client
+[debug] [2025-08-15T00:47:52.568Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\index.html
+[debug] [2025-08-15T00:47:52.570Z] [unzip] Entry: client/android-chrome-192x192.png (compressed_size=2684 bytes, uncompressed_size=2684 bytes)
+[debug] [2025-08-15T00:47:52.570Z] [unzip] Processing entry: client\android-chrome-192x192.png
+[debug] [2025-08-15T00:47:52.571Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client
+[debug] [2025-08-15T00:47:52.571Z] [unzip] Writing file: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\android-chrome-192x192.png
+[debug] [2025-08-15T00:47:52.572Z] [unzip] Entry: client/apple-touch-icon.png (compressed_size=2123 bytes, uncompressed_size=2152 bytes)
+[debug] [2025-08-15T00:47:52.573Z] [unzip] Processing entry: client\apple-touch-icon.png
+[debug] [2025-08-15T00:47:52.573Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client
+[debug] [2025-08-15T00:47:52.574Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\apple-touch-icon.png
+[debug] [2025-08-15T00:47:52.576Z] [unzip] Entry: client/android-chrome-512x512.png (compressed_size=5369 bytes, uncompressed_size=5411 bytes)
+[debug] [2025-08-15T00:47:52.577Z] [unzip] Processing entry: client\android-chrome-512x512.png
+[debug] [2025-08-15T00:47:52.577Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client
+[debug] [2025-08-15T00:47:52.577Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\android-chrome-512x512.png
+[debug] [2025-08-15T00:47:52.579Z] [unzip] Entry: client/manifest.json (compressed_size=245 bytes, uncompressed_size=551 bytes)
+[debug] [2025-08-15T00:47:52.579Z] [unzip] Processing entry: client\manifest.json
+[debug] [2025-08-15T00:47:52.579Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client
+[debug] [2025-08-15T00:47:52.580Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\manifest.json
+[debug] [2025-08-15T00:47:52.582Z] [unzip] Entry: client/robots.txt (compressed_size=26 bytes, uncompressed_size=26 bytes)
+[debug] [2025-08-15T00:47:52.582Z] [unzip] Processing entry: client\robots.txt
+[debug] [2025-08-15T00:47:52.582Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client
+[debug] [2025-08-15T00:47:52.582Z] [unzip] Writing file: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\robots.txt
+[debug] [2025-08-15T00:47:52.583Z] [unzip] Entry: client/mstile-150x150.png (compressed_size=2034 bytes, uncompressed_size=2034 bytes)
+[debug] [2025-08-15T00:47:52.583Z] [unzip] Processing entry: client\mstile-150x150.png
+[debug] [2025-08-15T00:47:52.584Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client
+[debug] [2025-08-15T00:47:52.584Z] [unzip] Writing file: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\mstile-150x150.png
+[debug] [2025-08-15T00:47:52.585Z] [unzip] Entry: client/assets/ (compressed_size=0 bytes, uncompressed_size=0 bytes)
+[debug] [2025-08-15T00:47:52.585Z] [unzip] Processing entry: client\assets\
+[debug] [2025-08-15T00:47:52.585Z] [unzip] mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\
+[debug] [2025-08-15T00:47:52.586Z] [unzip] Entry: client/assets/index-BX-A56oj.js (compressed_size=582089 bytes, uncompressed_size=2092775 bytes)
+[debug] [2025-08-15T00:47:52.586Z] [unzip] Processing entry: client\assets\index-BX-A56oj.js
+[debug] [2025-08-15T00:47:52.586Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets
+[debug] [2025-08-15T00:47:52.587Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\index-BX-A56oj.js
+[debug] [2025-08-15T00:47:52.601Z] [unzip] Entry: client/assets/index-CjB9C900.css (compressed_size=35979 bytes, uncompressed_size=298654 bytes)
+[debug] [2025-08-15T00:47:52.601Z] [unzip] Processing entry: client\assets\index-CjB9C900.css
+[debug] [2025-08-15T00:47:52.601Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets
+[debug] [2025-08-15T00:47:52.601Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\index-CjB9C900.css
+[debug] [2025-08-15T00:47:52.604Z] [unzip] Entry: client/assets/index-BX-A56oj.js.map (compressed_size=2362482 bytes, uncompressed_size=10036679 bytes)
+[debug] [2025-08-15T00:47:52.604Z] [unzip] Processing entry: client\assets\index-BX-A56oj.js.map
+[debug] [2025-08-15T00:47:52.604Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets
+[debug] [2025-08-15T00:47:52.605Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\index-BX-A56oj.js.map
+[debug] [2025-08-15T00:47:52.654Z] [unzip] Entry: client/assets/extensions/ (compressed_size=0 bytes, uncompressed_size=0 bytes)
+[debug] [2025-08-15T00:47:52.654Z] [unzip] Processing entry: client\assets\extensions\
+[debug] [2025-08-15T00:47:52.654Z] [unzip] mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\extensions\
+[debug] [2025-08-15T00:47:52.656Z] [unzip] Entry: client/assets/extensions/default-extension.png (compressed_size=1646 bytes, uncompressed_size=1657 bytes)
+[debug] [2025-08-15T00:47:52.659Z] [unzip] Processing entry: client\assets\extensions\default-extension.png
+[debug] [2025-08-15T00:47:52.659Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\extensions
+[debug] [2025-08-15T00:47:52.661Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\extensions\default-extension.png
+[debug] [2025-08-15T00:47:52.666Z] [unzip] Entry: client/assets/img/ (compressed_size=0 bytes, uncompressed_size=0 bytes)
+[debug] [2025-08-15T00:47:52.667Z] [unzip] Processing entry: client\assets\img\
+[debug] [2025-08-15T00:47:52.668Z] [unzip] mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\img\
+[debug] [2025-08-15T00:47:52.673Z] [unzip] Entry: client/assets/img/database.png (compressed_size=29449 bytes, uncompressed_size=29988 bytes)
+[debug] [2025-08-15T00:47:52.674Z] [unzip] Processing entry: client\assets\img\database.png
+[debug] [2025-08-15T00:47:52.676Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\img
+[debug] [2025-08-15T00:47:52.678Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\img\database.png
+[debug] [2025-08-15T00:47:52.680Z] [unzip] Entry: client/assets/provider-icons/ (compressed_size=0 bytes, uncompressed_size=0 bytes)
+[debug] [2025-08-15T00:47:52.680Z] [unzip] Processing entry: client\assets\provider-icons\
+[debug] [2025-08-15T00:47:52.681Z] [unzip] mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\
+[debug] [2025-08-15T00:47:52.681Z] [unzip] Entry: client/assets/provider-icons/auth_service_saml.svg (compressed_size=575 bytes, uncompressed_size=1226 bytes)
+[debug] [2025-08-15T00:47:52.681Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_saml.svg
+[debug] [2025-08-15T00:47:52.681Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
+[debug] [2025-08-15T00:47:52.682Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_saml.svg
+[debug] [2025-08-15T00:47:52.683Z] [unzip] Entry: client/assets/provider-icons/auth_service_phone.svg (compressed_size=261 bytes, uncompressed_size=414 bytes)
+[debug] [2025-08-15T00:47:52.684Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_phone.svg
+[debug] [2025-08-15T00:47:52.684Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
+[debug] [2025-08-15T00:47:52.684Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_phone.svg
+[debug] [2025-08-15T00:47:52.685Z] [unzip] Entry: client/assets/provider-icons/auth_service_facebook.svg (compressed_size=289 bytes, uncompressed_size=457 bytes)
+[debug] [2025-08-15T00:47:52.685Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_facebook.svg
+[debug] [2025-08-15T00:47:52.685Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
+[debug] [2025-08-15T00:47:52.686Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_facebook.svg
+[debug] [2025-08-15T00:47:52.687Z] [unzip] Entry: client/assets/provider-icons/auth_service_game_center.svg (compressed_size=991 bytes, uncompressed_size=3921 bytes)
+[debug] [2025-08-15T00:47:52.688Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_game_center.svg
+[debug] [2025-08-15T00:47:52.688Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
+[debug] [2025-08-15T00:47:52.688Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_game_center.svg
+[debug] [2025-08-15T00:47:52.690Z] [unzip] Entry: client/assets/provider-icons/auth_service_apple.svg (compressed_size=230 bytes, uncompressed_size=334 bytes)
+[debug] [2025-08-15T00:47:52.690Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_apple.svg
+[debug] [2025-08-15T00:47:52.690Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
+[debug] [2025-08-15T00:47:52.691Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_apple.svg
+[debug] [2025-08-15T00:47:52.693Z] [unzip] Entry: client/assets/provider-icons/auth_service_github.svg (compressed_size=466 bytes, uncompressed_size=838 bytes)
+[debug] [2025-08-15T00:47:52.694Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_github.svg
+[debug] [2025-08-15T00:47:52.694Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
+[debug] [2025-08-15T00:47:52.694Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_github.svg
+[debug] [2025-08-15T00:47:52.695Z] [unzip] Entry: client/assets/provider-icons/auth_service_mslive.svg (compressed_size=203 bytes, uncompressed_size=378 bytes)
+[debug] [2025-08-15T00:47:52.696Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_mslive.svg
+[debug] [2025-08-15T00:47:52.696Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
+[debug] [2025-08-15T00:47:52.696Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_mslive.svg
+[debug] [2025-08-15T00:47:52.697Z] [unzip] Entry: client/assets/provider-icons/auth_service_yahoo.svg (compressed_size=577 bytes, uncompressed_size=1182 bytes)
+[debug] [2025-08-15T00:47:52.697Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_yahoo.svg
+[debug] [2025-08-15T00:47:52.698Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
+[debug] [2025-08-15T00:47:52.698Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_yahoo.svg
+[debug] [2025-08-15T00:47:52.699Z] [unzip] Entry: client/assets/provider-icons/auth_service_twitter.svg (compressed_size=444 bytes, uncompressed_size=751 bytes)
+[debug] [2025-08-15T00:47:52.699Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_twitter.svg
+[debug] [2025-08-15T00:47:52.699Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
+[debug] [2025-08-15T00:47:52.700Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_twitter.svg
+[debug] [2025-08-15T00:47:52.701Z] [unzip] Entry: client/assets/provider-icons/auth_service_play_games.svg (compressed_size=565 bytes, uncompressed_size=1173 bytes)
+[debug] [2025-08-15T00:47:52.701Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_play_games.svg
+[debug] [2025-08-15T00:47:52.701Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
+[debug] [2025-08-15T00:47:52.702Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_play_games.svg
+[debug] [2025-08-15T00:47:52.703Z] [unzip] Entry: client/assets/provider-icons/auth_service_email.svg (compressed_size=228 bytes, uncompressed_size=326 bytes)
+[debug] [2025-08-15T00:47:52.703Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_email.svg
+[debug] [2025-08-15T00:47:52.703Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
+[debug] [2025-08-15T00:47:52.704Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_email.svg
+[debug] [2025-08-15T00:47:52.706Z] [unzip] Entry: client/assets/provider-icons/auth_service_google.svg (compressed_size=409 bytes, uncompressed_size=720 bytes)
+[debug] [2025-08-15T00:47:52.706Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_google.svg
+[debug] [2025-08-15T00:47:52.707Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
+[debug] [2025-08-15T00:47:52.708Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_google.svg
+[debug] [2025-08-15T00:47:52.711Z] [unzip] Entry: client/assets/provider-icons/auth_service_oidc.svg (compressed_size=414 bytes, uncompressed_size=858 bytes)
+[debug] [2025-08-15T00:47:52.711Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_oidc.svg
+[debug] [2025-08-15T00:47:52.711Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
+[debug] [2025-08-15T00:47:52.712Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_oidc.svg
+[debug] [2025-08-15T00:47:52.713Z] [unzip] Entry: client/browserconfig.xml (compressed_size=491 bytes, uncompressed_size=822 bytes)
+[debug] [2025-08-15T00:47:52.714Z] [unzip] Processing entry: client\browserconfig.xml
+[debug] [2025-08-15T00:47:52.714Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client
+[debug] [2025-08-15T00:47:52.715Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\browserconfig.xml
+[debug] [2025-08-15T00:47:52.716Z] [unzip] Entry: client/favicon-32x32.png (compressed_size=475 bytes, uncompressed_size=475 bytes)
+[debug] [2025-08-15T00:47:52.716Z] [unzip] Processing entry: client\favicon-32x32.png
+[debug] [2025-08-15T00:47:52.717Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client
+[debug] [2025-08-15T00:47:52.717Z] [unzip] Writing file: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\client\favicon-32x32.png
+[debug] [2025-08-15T00:47:52.719Z] [unzip] Entry: server/ (compressed_size=0 bytes, uncompressed_size=0 bytes)
+[debug] [2025-08-15T00:47:52.719Z] [unzip] Processing entry: server\
+[debug] [2025-08-15T00:47:52.719Z] [unzip] mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\server\
+[debug] [2025-08-15T00:47:52.720Z] [unzip] Entry: server/server.mjs.map (compressed_size=217845 bytes, uncompressed_size=944978 bytes)
+[debug] [2025-08-15T00:47:52.720Z] [unzip] Processing entry: server\server.mjs.map
+[debug] [2025-08-15T00:47:52.720Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\server
+[debug] [2025-08-15T00:47:52.721Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\server\server.mjs.map
+[debug] [2025-08-15T00:47:52.730Z] [unzip] Entry: server/server.mjs (compressed_size=276407 bytes, uncompressed_size=933701 bytes)
+[debug] [2025-08-15T00:47:52.730Z] [unzip] Processing entry: server\server.mjs
+[debug] [2025-08-15T00:47:52.730Z] [unzip] else mkdir: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\server
+[debug] [2025-08-15T00:47:52.731Z] [unzip] deflating: C:\Users\jakec\.cache\firebase\emulators\ui-v1.15.0\server\server.mjs
+[debug] [2025-08-15T00:47:52.741Z] [Extensions] Connecting Extensions emulator, this is a noop.
+[info] i  functions: Watching "D:\EMON_REACT\functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"D:\\EMON_REACT\\functions\" for Cloud Functions..."}}
+[debug] [2025-08-15T00:47:52.749Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2025-08-15T00:47:55.594Z] > [functions] package.json contents: {
+  "name": "emon-cloud-functions",
+  "scripts": {
+    "build": "tsc -p ./",
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "lint": "eslint --ext .ts src"
+  },
+  "engines": {
+    "node": "18"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "firebase-admin": "^11.11.1",
+    "firebase-functions": "^4.9.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.8.0",
+    "@typescript-eslint/parser": "^7.8.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0"
+  },
+  "private": true
+}
+[debug] [2025-08-15T00:47:55.594Z] Building nodejs source
+[debug] [2025-08-15T00:47:55.595Z] Failed to find version of module node: reached end of search path D:\EMON_REACT\functions\node_modules
+[warn] !  functions: Your requested "node" version "18" doesn't match your global version "22". Using node@22 from host. 
+[info] i  functions: You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly 
+[debug] [2025-08-15T00:47:55.599Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-08-15T00:47:55.609Z] Found firebase-functions binary at 'D:\EMON_REACT\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8469
+
+[debug] [2025-08-15T00:47:56.417Z] Got response from /__/functions.yaml {"endpoints":{"aggregateRealtimeBuckets":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"scheduleTrigger":{"schedule":"* * * * *","retryConfig":{"retryCount":null,"maxDoublings":null,"maxRetryDuration":null,"maxBackoffDuration":null,"minBackoffDuration":null},"timeZone":"UTC"},"labels":{},"entryPoint":"aggregateRealtimeBuckets"}},"specVersion":"v1alpha1","requiredAPIs":[{"api":"cloudscheduler.googleapis.com","reason":"Needed for scheduled functions."}]}
+[info] +  functions: Loaded functions definitions from source: aggregateRealtimeBuckets. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: aggregateRealtimeBuckets."}}
+[debug] [2025-08-15T00:48:00.473Z] addPubsubTrigger {"eventTrigger":{"eventType":"pubsub","resource":""}}
+[debug] [2025-08-15T00:48:00.474Z] [pubsub] addTrigger(firebase-schedule-aggregateRealtimeBuckets, us-central1-aggregateRealtimeBuckets-0, event)
+[debug] [2025-08-15T00:48:00.479Z] [pubsub] Creating topic: firebase-schedule-aggregateRealtimeBuckets
+[debug] [2025-08-15T00:48:00.793Z] [pubsub] Creating sub for topic: firebase-schedule-aggregateRealtimeBuckets
+[info] +  functions[us-central1-aggregateRealtimeBuckets]: pubsub function initialized. {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mpubsub\u001b[22m function initialized."}}
+[debug] [2025-08-15T00:48:00.826Z] >>> [apiv2][query] PUT http://127.0.0.1:9000/.settings/rules.json ns=emoniot-fb5ce-default-rtdb
+[debug] [2025-08-15T00:48:00.827Z] >>> [apiv2][body] PUT http://127.0.0.1:9000/.settings/rules.json "{\n  \"rules\": {\n    \".read\": true,\n    \".write\": true\n  }\n}\n"
+[debug] [2025-08-15T00:48:01.562Z] <<< [apiv2][status] PUT http://127.0.0.1:9000/.settings/rules.json 200
+[debug] [2025-08-15T00:48:01.563Z] <<< [apiv2][body] PUT http://127.0.0.1:9000/.settings/rules.json {"status":"ok"}
+[debug] [2025-08-15T00:48:01.571Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+│ i  View Emulator UI at http://127.0.0.1:4000/               │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────┬────────────────┬──────────────────────────────────┐
+│ Emulator   │ Host:Port      │ View in Emulator UI              │
+├────────────┼────────────────┼──────────────────────────────────┤
+│ Functions  │ 127.0.0.1:5001 │ http://127.0.0.1:4000/functions  │
+├────────────┼────────────────┼──────────────────────────────────┤
+│ Firestore  │ 127.0.0.1:8080 │ http://127.0.0.1:4000/firestore  │
+├────────────┼────────────────┼──────────────────────────────────┤
+│ Database   │ 127.0.0.1:9000 │ http://127.0.0.1:4000/database   │
+├────────────┼────────────────┼──────────────────────────────────┤
+│ Pub/Sub    │ 127.0.0.1:8085 │ n/a                              │
+├────────────┼────────────────┼──────────────────────────────────┤
+│ Extensions │ 127.0.0.1:5001 │ http://127.0.0.1:4000/extensions │
+└────────────┴────────────────┴──────────────────────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500, 9150
+┌─────────────────────────┬───────────────┬─────────────────────┐
+│ Extension Instance Name │ Extension Ref │ View in Emulator UI │
+└─────────────────────────┴───────────────┴─────────────────────┘
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2025-08-15T01:16:10.758Z] File D:\EMON_REACT\functions\src\index.ts changed, reloading triggers {"metadata":{"emulator":{"name":"functions"},"message":"File D:\\EMON_REACT\\functions\\src\\index.ts changed, reloading triggers"}}
+[debug] [2025-08-15T01:16:11.943Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2025-08-15T01:16:14.348Z] > [functions] package.json contents: {
+  "name": "emon-cloud-functions",
+  "scripts": {
+    "build": "tsc -p ./",
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "lint": "eslint --ext .ts src"
+  },
+  "engines": {
+    "node": "18"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "firebase-admin": "^11.11.1",
+    "firebase-functions": "^4.9.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.8.0",
+    "@typescript-eslint/parser": "^7.8.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0"
+  },
+  "private": true
+}
+[debug] [2025-08-15T01:16:14.350Z] Building nodejs source
+[debug] [2025-08-15T01:16:14.355Z] Failed to find version of module node: reached end of search path D:\EMON_REACT\functions\node_modules
+[warn] !  functions: Your requested "node" version "18" doesn't match your global version "22". Using node@22 from host. 
+[info] i  functions: You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly 
+[debug] [2025-08-15T01:16:14.377Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-08-15T01:16:14.413Z] Found firebase-functions binary at 'D:\EMON_REACT\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8544
+
+[debug] [2025-08-15T01:16:15.386Z] Got response from /__/functions.yaml {"endpoints":{"aggregateRealtimeBuckets":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"scheduleTrigger":{"schedule":"* * * * *","retryConfig":{"retryCount":null,"maxDoublings":null,"maxRetryDuration":null,"maxBackoffDuration":null,"minBackoffDuration":null},"timeZone":"UTC"},"labels":{},"entryPoint":"aggregateRealtimeBuckets"}},"specVersion":"v1alpha1","requiredAPIs":[{"api":"cloudscheduler.googleapis.com","reason":"Needed for scheduled functions."}]}
+[info] +  functions: Loaded functions definitions from source: aggregateRealtimeBuckets. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: aggregateRealtimeBuckets."}}
+[debug] [2025-08-15T01:17:19.385Z] File D:\EMON_REACT\functions\lib\index.js changed, reloading triggers {"metadata":{"emulator":{"name":"functions"},"message":"File D:\\EMON_REACT\\functions\\lib\\index.js changed, reloading triggers"}}
+[debug] [2025-08-15T01:17:20.392Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2025-08-15T01:17:27.164Z] > [functions] package.json contents: {
+  "name": "emon-cloud-functions",
+  "scripts": {
+    "build": "tsc -p ./",
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "lint": "eslint --ext .ts src"
+  },
+  "engines": {
+    "node": "18"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "firebase-admin": "^11.11.1",
+    "firebase-functions": "^4.9.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.8.0",
+    "@typescript-eslint/parser": "^7.8.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0"
+  },
+  "private": true
+}
+[debug] [2025-08-15T01:17:27.165Z] Building nodejs source
+[debug] [2025-08-15T01:17:27.165Z] Failed to find version of module node: reached end of search path D:\EMON_REACT\functions\node_modules
+[warn] !  functions: Your requested "node" version "18" doesn't match your global version "22". Using node@22 from host. 
+[info] i  functions: You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly 
+[debug] [2025-08-15T01:17:27.169Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-08-15T01:17:27.179Z] Found firebase-functions binary at 'D:\EMON_REACT\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8022
+
+[debug] [2025-08-15T01:17:27.940Z] Got response from /__/functions.yaml {"endpoints":{"aggregateRealtimeBuckets":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"scheduleTrigger":{"schedule":"* * * * *","retryConfig":{"retryCount":null,"maxDoublings":null,"maxRetryDuration":null,"maxBackoffDuration":null,"minBackoffDuration":null},"timeZone":"UTC"},"labels":{},"entryPoint":"aggregateRealtimeBuckets"}},"specVersion":"v1alpha1","requiredAPIs":[{"api":"cloudscheduler.googleapis.com","reason":"Needed for scheduled functions."}]}
+[info] +  functions: Loaded functions definitions from source: aggregateRealtimeBuckets. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: aggregateRealtimeBuckets."}}
+[debug] [2025-08-15T01:18:37.894Z] File D:\EMON_REACT\functions\src\index.ts changed, reloading triggers {"metadata":{"emulator":{"name":"functions"},"message":"File D:\\EMON_REACT\\functions\\src\\index.ts changed, reloading triggers"}}
+[debug] [2025-08-15T01:18:38.904Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2025-08-15T01:18:40.296Z] > [functions] package.json contents: {
+  "name": "emon-cloud-functions",
+  "scripts": {
+    "build": "tsc -p ./",
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "lint": "eslint --ext .ts src"
+  },
+  "engines": {
+    "node": "18"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "firebase-admin": "^11.11.1",
+    "firebase-functions": "^4.9.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.8.0",
+    "@typescript-eslint/parser": "^7.8.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0"
+  },
+  "private": true
+}
+[debug] [2025-08-15T01:18:40.297Z] Building nodejs source
+[debug] [2025-08-15T01:18:40.297Z] Failed to find version of module node: reached end of search path D:\EMON_REACT\functions\node_modules
+[warn] !  functions: Your requested "node" version "18" doesn't match your global version "22". Using node@22 from host. 
+[info] i  functions: You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly 
+[debug] [2025-08-15T01:18:40.300Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-08-15T01:18:40.316Z] Found firebase-functions binary at 'D:\EMON_REACT\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8832
+
+[debug] [2025-08-15T01:18:41.254Z] Got response from /__/functions.yaml {"endpoints":{"aggregateRealtimeBuckets":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"scheduleTrigger":{"schedule":"* * * * *","retryConfig":{"retryCount":null,"maxDoublings":null,"maxRetryDuration":null,"maxBackoffDuration":null,"minBackoffDuration":null},"timeZone":"UTC"},"labels":{},"entryPoint":"aggregateRealtimeBuckets"}},"specVersion":"v1alpha1","requiredAPIs":[{"api":"cloudscheduler.googleapis.com","reason":"Needed for scheduled functions."}]}
+[info] +  functions: Loaded functions definitions from source: aggregateRealtimeBuckets. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: aggregateRealtimeBuckets."}}
+[debug] [2025-08-15T01:19:38.960Z] File D:\EMON_REACT\functions\lib\index.js changed, reloading triggers {"metadata":{"emulator":{"name":"functions"},"message":"File D:\\EMON_REACT\\functions\\lib\\index.js changed, reloading triggers"}}
+[debug] [2025-08-15T01:19:39.974Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2025-08-15T01:19:40.911Z] > [functions] package.json contents: {
+  "name": "emon-cloud-functions",
+  "scripts": {
+    "build": "tsc -p ./",
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "lint": "eslint --ext .ts src"
+  },
+  "engines": {
+    "node": "18"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "firebase-admin": "^11.11.1",
+    "firebase-functions": "^4.9.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.8.0",
+    "@typescript-eslint/parser": "^7.8.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0"
+  },
+  "private": true
+}
+[debug] [2025-08-15T01:19:40.912Z] Building nodejs source
+[debug] [2025-08-15T01:19:40.912Z] Failed to find version of module node: reached end of search path D:\EMON_REACT\functions\node_modules
+[warn] !  functions: Your requested "node" version "18" doesn't match your global version "22". Using node@22 from host. 
+[info] i  functions: You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly 
+[debug] [2025-08-15T01:19:40.913Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-08-15T01:19:40.919Z] Found firebase-functions binary at 'D:\EMON_REACT\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8367
+
+[debug] [2025-08-15T01:19:41.468Z] Got response from /__/functions.yaml {"endpoints":{"aggregateRealtimeBuckets":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"scheduleTrigger":{"schedule":"* * * * *","retryConfig":{"retryCount":null,"maxDoublings":null,"maxRetryDuration":null,"maxBackoffDuration":null,"minBackoffDuration":null},"timeZone":"UTC"},"labels":{},"entryPoint":"aggregateRealtimeBuckets"}},"specVersion":"v1alpha1","requiredAPIs":[{"api":"cloudscheduler.googleapis.com","reason":"Needed for scheduled functions."}]}
+[info] +  functions: Loaded functions definitions from source: aggregateRealtimeBuckets. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: aggregateRealtimeBuckets."}}
+[debug] [2025-08-15T01:32:57.995Z] Received signal SIGHUP 1
+[info]  
+[info] i  emulators: Received SIGHUP for the first time. Starting a clean shutdown. 
+[info] i  emulators: Please wait for a clean shutdown or send the SIGHUP signal again to stop right now. 
+[info] i  emulators: Shutting down emulators. {"metadata":{"emulator":{"name":"hub"},"message":"Shutting down emulators."}}
+[info] i  ui: Stopping Emulator UI {"metadata":{"emulator":{"name":"ui"},"message":"Stopping Emulator UI"}}
+[info] i  extensions: Stopping Extensions Emulator {"metadata":{"emulator":{"name":"extensions"},"message":"Stopping Extensions Emulator"}}
+[debug] [2025-08-15T01:32:58.017Z] [Extensions] Stopping Extensions emulator, this is a noop.
+[info] i  functions: Stopping Functions Emulator {"metadata":{"emulator":{"name":"functions"},"message":"Stopping Functions Emulator"}}
+[info] i  database: Stopping Database Emulator {"metadata":{"emulator":{"name":"database"},"message":"Stopping Database Emulator"}}
+[warn] !  Database Emulator has exited upon receiving signal: SIGINT 
+[info] i  firestore: Stopping Firestore Emulator {"metadata":{"emulator":{"name":"firestore"},"message":"Stopping Firestore Emulator"}}
+[warn] !  Firestore Emulator has exited upon receiving signal: SIGINT 
+[info] i  pubsub: Stopping Pub/Sub Emulator {"metadata":{"emulator":{"name":"pubsub"},"message":"Stopping Pub/Sub Emulator"}}
+[warn] !  Pub/Sub Emulator has exited upon receiving signal: SIGINT 
+[info] i  eventarc: Stopping Eventarc Emulator {"metadata":{"emulator":{"name":"eventarc"},"message":"Stopping Eventarc Emulator"}}
+[info] i  tasks: Stopping Cloud Tasks Emulator {"metadata":{"emulator":{"name":"tasks"},"message":"Stopping Cloud Tasks Emulator"}}
+[info] i  hub: Stopping emulator hub {"metadata":{"emulator":{"name":"hub"},"message":"Stopping emulator hub"}}
+[info] i  logging: Stopping Logging Emulator {"metadata":{"emulator":{"name":"logging"},"message":"Stopping Logging Emulator"}}
+[debug] [2025-08-15T01:32:58.083Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
